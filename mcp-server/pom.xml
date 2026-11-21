@@ -30,12 +30,12 @@
              Same version as the framework. -->
         <jackson2.version>2.23.0</jackson2.version>
         <slf4j.version>2.0.20</slf4j.version>
-        <logback.version>1.5.38</logback.version>
+        <logback.version>1.6.6</logback.version>
         <testng.version>7.12.0</testng.version>
         <assertj.version>3.27.7</assertj.version>
 
-        <compiler.plugin.version>3.14.1</compiler.plugin.version>
-        <surefire.version>3.5.4</surefire.version>
+        <compiler.plugin.version>3.16.0</compiler.plugin.version>
+        <surefire.version>3.6.1</surefire.version>
         <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
         <checkstyle.version>14.4.0</checkstyle.version>
         <spotbugs.plugin.version>4.10.5.0</spotbugs.plugin.version>
