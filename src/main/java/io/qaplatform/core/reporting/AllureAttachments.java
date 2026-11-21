@@ -1,6 +1,7 @@
 package io.qaplatform.core.reporting;
 
 import io.qameta.allure.Allure;
+import io.qameta.allure.AttachmentOptions;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -15,16 +16,16 @@ public final class AllureAttachments {
     }
 
     public static void text(String name, String content) {
-        Allure.addAttachment(name, "text/plain", content == null ? "" : content, ".txt");
+        Allure.attachment(name, "text/plain", content == null ? "" : content, AttachmentOptions.withFileExtension(".txt"));
     }
 
     public static void json(String name, String content) {
-        Allure.addAttachment(name, "application/json", content == null ? "" : content, ".json");
+        Allure.attachment(name, "application/json", content == null ? "" : content, AttachmentOptions.withFileExtension(".json"));
     }
 
     public static void png(String name, byte[] bytes) {
         if (bytes != null) {
-            Allure.addAttachment(name, "image/png", new ByteArrayInputStream(bytes), ".png");
+            Allure.attachment(name, "image/png", new ByteArrayInputStream(bytes), AttachmentOptions.withFileExtension(".png"));
         }
     }
 
@@ -32,8 +33,8 @@ public final class AllureAttachments {
         if (path == null || !Files.exists(path)) {
             return;
         }
-        try {
-            Allure.addAttachment(name, mime, Files.newInputStream(path), extension);
+        try (var in = Files.newInputStream(path)) {
+            Allure.attachment(name, mime, in, AttachmentOptions.withFileExtension(extension));
         } catch (IOException e) {
             text(name + " (unavailable)", e.getMessage());
         }

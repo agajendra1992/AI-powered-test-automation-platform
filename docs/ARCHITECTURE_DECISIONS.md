@@ -22,7 +22,7 @@ Hooks never decide what to start. The first `page()` call opens a browser, so AP
 start none (verified: 0 launches for the API suite). Tag hooks only add tag-specific evidence.
 
 ## ADR-005 One reporting adapter
-Only `allure-cucumber7-jvm` is on the classpath. Adding `allure-testng` would report every
+Only `allure-cucumber8-jvm` (Cucumber 7 used `allure-cucumber7-jvm`) is on the classpath. Adding `allure-testng` would report every
 scenario twice (once as `runScenario`). Core code uses `allure-java-commons` (steps, attachments)
 only, so reporting can be swapped for another backend.
 

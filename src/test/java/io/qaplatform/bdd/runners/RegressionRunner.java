@@ -12,7 +12,7 @@ import io.cucumber.testng.CucumberOptions;
             "html:target/cucumber-reports/regression.html",
             "json:target/cucumber-reports/regression.json",
             "rerun:target/cucumber-reports/regression-rerun.txt",
-            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
+            "io.qameta.allure.cucumber8jvm.AllureCucumber8Jvm"
         },
         monochrome = true)
 public class RegressionRunner extends BaseCucumberRunner {

@@ -12,7 +12,7 @@ import io.cucumber.testng.CucumberOptions;
             "html:target/cucumber-reports/smoke.html",
             "json:target/cucumber-reports/smoke.json",
             "rerun:target/cucumber-reports/smoke-rerun.txt",
-            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
+            "io.qameta.allure.cucumber8jvm.AllureCucumber8Jvm"
         },
         monochrome = true)
 public class SmokeRunner extends BaseCucumberRunner {

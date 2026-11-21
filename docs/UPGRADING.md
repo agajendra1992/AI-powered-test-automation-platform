@@ -9,7 +9,8 @@ All versions live in `pom.xml` `<properties>` (plus the Cucumber, Allure and Jac
 5. Record the change and results in `IMPLEMENTATION_STATUS.md`.
 
 Compatibility notes:
-* `allure-cucumber7-jvm` must match the Cucumber 7.x line. Moving to Cucumber 8 requires a matching Allure adapter.
+* `allure-cucumber8-jvm` must match the Cucumber 8.x line (Cucumber 7 needed `allure-cucumber7-jvm`); the runners name the plugin class `io.qameta.allure.cucumber8jvm.AllureCucumber8Jvm`.
+* Cucumber 8's JSON report plugin needs `jackson-databind` + `jackson-datatype-jdk8` on the classpath (both from the Jackson BOM).
 * `allure.commandline.version` (report generator) is versioned independently of `allure.version` (adapters).
 * Playwright downloads browser builds matching its version on first run; CI caches `~/.cache/ms-playwright`
   (the cache key includes the `pom.xml` hash, so a version bump refreshes it).
@@ -44,9 +45,15 @@ Compatibility notes:
 | Dependency | Held at | Why |
 |---|---|---|
 | maven-surefire-plugin | 3.5.x | 3.6+ runs TestNG on the JUnit Platform and rejects `suiteXmlFiles` |
-| Cucumber | 7.x | 8 changed `AbstractTestNGCucumberTests.scenarios` (now takes `ITestContext`); migrate `BaseCucumberRunner`, then run all suites on 3 browsers |
-| Allure | 2.x | 3.0 removed `Allure.addAttachment(String, String, InputStream, String)` used by `AllureAttachments` |
 | mcp (Python, ai-orchestration) | 1.x | langchain-mcp-adapters requires 1.x |
 
 To try one of them, remove its rule from `.github/dependabot.yml`; Dependabot opens the PR on its next run.
+
+### Done: Cucumber 7 → 8 and Allure 2 → 3 (2026-11-21)
+
+Cucumber 8.0.4 and Allure 3.1.1 (8.1.0 was inside the 7-day cooldown). Changes: `BaseCucumberRunner.scenarios(ITestContext)`;
+`AllureAttachments` uses `Allure.attachment(..., AttachmentOptions.withFileExtension(...))` and closes file streams;
+adapter `allure-cucumber8-jvm`; `jackson-datatype-jdk8` added for Cucumber's JSON report. Verified: regression 37/37 on
+chromium, firefox and webkit; failure evidence (screenshot, diagnostics, trace, API calls) still attached; Cucumber JSON
+unchanged in shape; Allure HTML report builds with the pinned CLI. Allure results no longer carry a `testClass` label.
 

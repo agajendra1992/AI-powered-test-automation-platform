@@ -6,7 +6,7 @@ layers (MCP, LLM, RAG; later phases) can be added on top without the core ever d
 | Responsibility | Technology |
 |---|---|
 | UI and API automation engine | Playwright Java (`APIRequestContext` for API) |
-| Business-readable scenarios | Cucumber JVM 7 (feature files, steps, hooks, PicoContainer DI) |
+| Business-readable scenarios | Cucumber JVM 8 (feature files, steps, hooks, PicoContainer DI) |
 | Execution, suites, parallelism | TestNG 7 (`AbstractTestNGCucumberTests`, parallel DataProvider) |
 | Build | Maven, Java 21 |
 | Reporting | Allure (Cucumber adapter only, so no duplicates), Cucumber HTML/JSON, `execution-summary.json` |

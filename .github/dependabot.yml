@@ -49,12 +49,6 @@ updates:
       # and the no-JUnit rule. Stay on 3.5.x (docs/UPGRADING.md).
       - dependency-name: "org.apache.maven.plugins:maven-surefire-plugin"
         versions: [">=3.6.0"]
-      # Major versions need a code migration (Cucumber 8: TestNG runner API; Allure 3: attachment API).
-      # Planned as separate work (IMPLEMENTATION_STATUS.md, known issues), not as automatic PRs.
-      - dependency-name: "io.cucumber:*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "io.qameta.allure:*"
-        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: deps
 
