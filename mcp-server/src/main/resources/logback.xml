@@ -1,0 +1,12 @@
+<configuration>
+    <!-- stderr only: on the stdio transport, stdout is the MCP protocol channel. -->
+    <appender name="STDERR" class="ch.qos.logback.core.ConsoleAppender">
+        <target>System.err</target>
+        <encoder><pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{24} - %msg%n</pattern></encoder>
+    </appender>
+    <logger name="io.qaplatform" level="INFO"/>
+    <logger name="org.eclipse.jetty" level="WARN"/>
+    <root level="WARN">
+        <appender-ref ref="STDERR"/>
+    </root>
+</configuration>

@@ -1,0 +1,9 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- Framework unit tests: no browser, no network. Run as the build gate before any test suite. -->
+<suite name="Framework unit tests" parallel="classes" thread-count="4">
+    <test name="unit">
+        <packages>
+            <package name="io.qaplatform.unit"/>
+        </packages>
+    </test>
+</suite>

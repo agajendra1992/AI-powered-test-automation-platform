@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UserPage",
+  "type": "object",
+  "required": ["page", "size", "total", "data"],
+  "properties": {
+    "page": { "type": "integer", "minimum": 1 },
+    "size": { "type": "integer", "minimum": 1 },
+    "total": { "type": "integer", "minimum": 0 },
+    "data": { "type": "array", "items": { "type": "object", "required": ["id", "name", "email"] } }
+  }
+}

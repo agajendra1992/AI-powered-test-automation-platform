@@ -1,0 +1,137 @@
+# Weekly dependency PRs, Monday 09:00 IST. Each PR runs the normal CI (Checkstyle, unit tests,
+# smoke) and, for Docker/pom changes, the Docker workflow, so nothing merges without passing.
+# A cooldown skips releases younger than 7 days (30 for major versions) to let bad releases be pulled.
+version: 2
+updates:
+  # Actions are pinned to commit SHAs; Dependabot updates the SHA and the "# vX.Y.Z" comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
+    # First matching group wins, so Playwright and the BOM-managed families stay together.
+    groups:
+      playwright:          # CI's version check fails until the Dockerfile tag is updated in the same PR
+        patterns: ["com.microsoft.playwright:*"]
+      cucumber:
+        patterns: ["io.cucumber:*"]
+      allure:
+        patterns: ["io.qameta.allure:*"]
+      maven-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # 2.x/3.x changed the API used by SchemaValidator (docs/UPGRADING.md).
+      - dependency-name: "com.networknt:json-schema-validator"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: deps
+
+  # MCP server module (MCP SDK, Jetty, Cucumber parser libraries)
+  - package-ecosystem: maven
+    directory: /mcp-server
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    open-pull-requests-limit: 5
+    groups:
+      mcp-sdk:
+        patterns: ["io.modelcontextprotocol.sdk:*"]
+      jetty:
+        patterns: ["org.eclipse.jetty*"]
+      mcp-minor-and-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    ignore:
+      # Must stay in step with the framework's Cucumber BDD version (see mcp-server/pom.xml)
+      - dependency-name: "io.cucumber:*"
+      - dependency-name: "com.microsoft.playwright:*"
+    commit-message:
+      prefix: deps(mcp)
+
+  - package-ecosystem: pip
+    directory: /sut
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      demo-app:
+        patterns: ["*"]
+    commit-message:
+      prefix: deps(sut)
+
+  - package-ecosystem: pip
+    directory: /rag
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      rag:
+        patterns: ["*"]
+    commit-message:
+      prefix: deps(rag)
+
+  - package-ecosystem: pip
+    directory: /ai-orchestration
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      ai-orchestration:
+        patterns: ["*"]
+    commit-message:
+      prefix: deps(ai)
+
+  # Demo app base image (python). The test-runner image is kept in step with pom.xml instead.
+  - package-ecosystem: docker
+    directory: /sut
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: Asia/Kolkata
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: deps(sut)

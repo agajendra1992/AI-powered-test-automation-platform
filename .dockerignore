@@ -1,0 +1,12 @@
+target/
+.allure/
+.git/
+.github/
+sut/
+docs/
+*.md
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.env

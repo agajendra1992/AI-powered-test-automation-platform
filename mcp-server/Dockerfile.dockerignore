@@ -1,0 +1,19 @@
+# Context is the repository root; keep it small and free of local state and secrets.
+.git/
+target/
+mcp-server/target/
+rag/
+sut/
+docs/
+ci-artifacts/
+secrets/
+.qa-mcp/
+.rag-data/
+.allure/
+**/.venv/
+**/__pycache__/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.env

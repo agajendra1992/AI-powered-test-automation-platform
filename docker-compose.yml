@@ -1,0 +1,176 @@
+# QA platform: demo app, test runner, and (profile "platform") ChromaDB + RAG + MCP server.
+#
+#   Test runner only (Phase 2):
+#     docker compose up -d --wait sut && docker compose run --rm tests
+#   Whole platform (local secrets first: scripts/dev-secrets.sh):
+#     docker compose --profile platform up -d --wait
+#     MCP: http://127.0.0.1:8765/mcp (bearer token from secrets/mcp-runner.token)
+#   Stop:  docker compose --profile platform down        (volumes keep the index and history)
+#
+# Every service has a health check, a memory/CPU limit and rotated JSON logs.
+
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+
+services:
+  sut:
+    build: ./sut
+    image: qa-platform-sut:local
+    ports:
+      - "127.0.0.1:${SUT_PORT:-8000}:8000"   # host port is loopback-only; set SUT_PORT if 8000 is taken
+    environment:
+      # Optional overrides; the app falls back to its built-in demo values.
+      SUT_ADMIN_PASSWORD: ${SUT_ADMIN_PASSWORD:-}
+      SUT_CLIENT_SECRET: ${SUT_CLIENT_SECRET:-}
+    mem_limit: 256m
+    cpus: 1.0
+    logging: *logging
+
+  tests:
+    build: .
+    image: qa-platform-tests:local
+    depends_on:
+      sut:
+        condition: service_healthy
+    environment:
+      BASE_URL: http://sut:8000
+      API_BASE_URL: http://sut:8000
+      OAUTH_TOKEN_URL: http://sut:8000/api/oauth/token
+      # Only needed when the SUT overrides were set above, or for real environments.
+      AUTH_PASSWORD: ${SUT_ADMIN_PASSWORD:-}
+      OAUTH_CLIENT_SECRET: ${SUT_CLIENT_SECRET:-}
+      GITHUB_RUN_NUMBER: ${GITHUB_RUN_NUMBER:-}
+      GITHUB_SHA: ${GITHUB_SHA:-}
+    shm_size: 1gb            # Chromium needs more than Docker's 64 MB default /dev/shm
+    init: true
+    volumes:
+      - ./target:/work/target
+    mem_limit: 2g
+    logging: *logging
+    profiles: ["tests"]      # not started by a bare `docker compose up`
+
+  chroma:
+    image: chromadb/chroma:1.5.9
+    volumes:
+      - chroma-data:/data    # persistent vector store
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8000 && printf 'GET /api/v2/heartbeat HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+    cpus: 1.0
+    logging: *logging
+    profiles: ["platform"]
+
+  rag:
+    build: ./rag
+    image: qa-platform-rag:local
+    depends_on:
+      chroma:
+        condition: service_healthy
+    environment:
+      RAG_CHROMA_HOST: chroma
+      RAG_CHROMA_PORT: "8000"
+      RAG_KEYS_FILE: /run/secrets/rag_keys
+      RAG_ALLOWED_ROOTS: /knowledge
+      RAG_LLM_PROVIDER: ${RAG_LLM_PROVIDER:-none}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    volumes:
+      - rag-data:/var/lib/rag         # registry (versions, chunk hashes) + audit log
+      - ./:/knowledge:ro              # project sources to index (read-only)
+    secrets: [rag_keys]
+    ports:
+      - "127.0.0.1:8090:8090"
+    mem_limit: 1g
+    # Embedding is CPU-bound and scales with cores (measured: 64 chunks 34 s at 1.5 CPUs, 4.6 s on 8 host cores).
+    # Raise RAG_CPUS for large initial ingestion; incremental re-ingestion only embeds changed files.
+    cpus: ${RAG_CPUS:-2.0}
+    logging: *logging
+    profiles: ["platform"]
+
+  mcp:
+    build:
+      context: .
+      dockerfile: mcp-server/Dockerfile
+    image: qa-platform-mcp:local
+    depends_on:
+      sut:
+        condition: service_healthy
+      rag:
+        condition: service_healthy
+    environment:
+      # The framework copy inside the image runs against the demo app on the compose network.
+      BASE_URL: http://sut:8000
+      API_BASE_URL: http://sut:8000
+      OAUTH_TOKEN_URL: http://sut:8000/api/oauth/token
+      QA_MCP_TOKENS_FILE: /run/secrets/mcp_tokens
+      QA_MCP_BROWSER_ORIGINS: http://sut:8000
+      QA_MCP_RUN_TIMEOUT_MINUTES: "30"
+      QA_RAG_URL: http://rag:8090
+      QA_RAG_KEY_FILE: /run/secrets/rag_mcp_token
+      QA_AI_PROVIDER: ${QA_AI_PROVIDER:-none}
+      QA_AI_MODEL: ${QA_AI_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - mcp-state:/var/lib/qa-mcp      # execution history, drafts, audit log, AI usage
+    secrets: [mcp_tokens, rag_mcp_token]
+    ports:
+      - "127.0.0.1:8765:8765"          # put a TLS proxy in front before exposing it beyond this host
+    shm_size: 1gb
+    init: true
+    mem_limit: 2500m
+    cpus: 2.0
+    logging: *logging
+    profiles: ["platform"]
+
+  ai:
+    build: ./ai-orchestration
+    image: qa-platform-ai:local
+    depends_on:
+      mcp:
+        condition: service_healthy
+      rag:
+        condition: service_healthy
+    environment:
+      AI_KEYS_FILE: /run/secrets/ai_keys
+      AI_MCP_URL: http://mcp:8765/mcp
+      AI_MCP_TOKEN_FILE: /run/secrets/ai_mcp_token     # an MCP "runner" identity of its own (audited as ai-orchestrator)
+      AI_RAG_URL: http://rag:8090
+      AI_RAG_KEY_FILE: /run/secrets/rag_mcp_token
+      AI_LLM_PROVIDER: ${AI_LLM_PROVIDER:-none}         # none = deterministic rules only; anthropic|openai|gemini|local
+      AI_LLM_MODEL: ${AI_LLM_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AI_DAILY_TOKEN_BUDGET: ${AI_DAILY_TOKEN_BUDGET:-500000}
+      AI_PRICE_INPUT_PER_MTOK: ${AI_PRICE_INPUT_PER_MTOK:-}     # set both to get cost estimates (no prices are built in)
+      AI_PRICE_OUTPUT_PER_MTOK: ${AI_PRICE_OUTPUT_PER_MTOK:-}
+    volumes:
+      - ai-data:/var/lib/ai            # LangGraph checkpoints (SQLite), workflow index, audit log, LLM usage
+    secrets: [ai_keys, ai_mcp_token, rag_mcp_token]
+    ports:
+      - "127.0.0.1:8095:8095"
+    mem_limit: 768m
+    cpus: 1.0
+    logging: *logging
+    profiles: ["platform"]
+
+secrets:
+  mcp_tokens:
+    file: ./secrets/mcp-tokens.json
+  rag_keys:
+    file: ./secrets/rag-keys.json
+  rag_mcp_token:
+    file: ./secrets/rag-mcp.token
+  ai_keys:
+    file: ./secrets/ai-keys.json
+  ai_mcp_token:
+    file: ./secrets/ai-mcp.token
+
+volumes:
+  chroma-data:
+  rag-data:
+  mcp-state:
+  ai-data:

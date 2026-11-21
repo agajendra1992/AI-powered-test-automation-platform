@@ -1,0 +1,191 @@
+# Pull requests and main: quality gate + unit tests, then the smoke suite.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Compile, Checkstyle, unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Playwright version matches Docker image
+        run: python3 scripts/check_versions.py
+
+      # validate (Checkstyle) -> compile -> test-compile -> framework unit tests
+      - name: Build and unit tests
+        run: mvn -B -ntp test -DsuiteXmlFile=testng-unit.xml
+
+      - name: SpotBugs
+        run: mvn -B -ntp spotbugs:check
+
+      - name: Upload unit test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: unit-test-reports
+          path: |
+            target/surefire-reports
+            target/checkstyle-result.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
+  smoke:
+    name: Smoke
+    needs: build
+    uses: ./.github/workflows/run-suite.yml
+    with:
+      suite: testng-smoke.xml
+      browser: chromium
+      environment: local
+    secrets: inherit
+
+  mcp-server:
+    name: MCP server (unit, HTTP and stdio end-to-end)
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Checkstyle, unit tests, in-process HTTP transport tests (auth, roles, approvals), shaded jar
+      - name: Build and test the MCP server
+        run: mvn -B -ntp -f mcp-server/pom.xml package
+
+      - name: SpotBugs (MCP server)
+        run: mvn -B -ntp -f mcp-server/pom.xml spotbugs:check
+
+      - name: Set up Python for the demo app
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: sut/requirements.txt
+
+      - name: Start the demo app
+        run: |
+          pip install -q -r sut/requirements.txt
+          mkdir -p target
+          nohup python -m uvicorn app:app --app-dir sut --port 8000 --log-level warning > target/sut.log 2>&1 &
+          curl -fsS --retry 30 --retry-delay 1 --retry-all-errors http://localhost:8000/api/health
+
+      # An MCP client launches the jar over stdio and runs the real API suite through it.
+      - name: MCP stdio end-to-end
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: mvn -B -ntp -f mcp-server/pom.xml test -Dtest=StdioFrameworkIT
+
+      - name: Upload MCP test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mcp-server-reports
+          path: |
+            mcp-server/target/surefire-reports
+            target/sut.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  rag:
+    name: RAG service (tests + retrieval evaluation)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: rag/requirements*.txt
+
+      - name: Install
+        run: pip install -q -r rag/requirements.txt -r rag/requirements-dev.txt
+
+      # Uses the deterministic hash embedder (no model download). Includes the gold-set evaluation (recall@5 >= 0.8).
+      - name: Tests
+        working-directory: rag
+        run: python -m pytest -q -p no:cacheprovider tests
+
+  ai-orchestration:
+    name: AI orchestration (LangChain + LangGraph tests)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ai-orchestration/requirements*.txt
+
+      - name: Install
+        run: pip install -q -r ai-orchestration/requirements.txt -r ai-orchestration/requirements-dev.txt
+
+      # Fakes for MCP, RAG and the model: no network, no API key. Live-MCP/RAG tests skip without AI_IT_* variables.
+      - name: Tests
+        working-directory: ai-orchestration
+        run: python -m pytest -q -p no:cacheprovider tests
+
+  security:
+    name: Security scan (dependencies, secrets, Docker/Compose config)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Trivy resolves Maven dependencies from ~/.m2; resolving first avoids per-POM requests to Maven Central (rate limits).
+      - name: Resolve Maven dependencies
+        run: |
+          mvn -B -ntp -q dependency:resolve
+          mvn -B -ntp -q -f mcp-server/pom.xml dependency:resolve
+
+      # Fails on HIGH/CRITICAL issues that have a fix. Unfixed ones (e.g. chromadb, see docs/SECURITY_VALIDATION.md)
+      # are reported in the log and tracked; they fail the build as soon as a fixed version exists.
+      - name: Trivy
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" -v "$HOME/.m2:/root/.m2:ro" aquasec/trivy:0.76.2 fs /repo \
+            --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --skip-dirs /repo/target,/repo/mcp-server/target

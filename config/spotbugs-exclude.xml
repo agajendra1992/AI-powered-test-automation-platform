@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclusions. Each entry needs a reason; prefer fixing the code.
+-->
+<FindBugsFilter>
+    <!-- Records and immutable DTOs returning/accepting List/Map components: callers receive List.copyOf / Map.of
+         values or framework-owned objects (Playwright Page, ScenarioContext) that are shared by design. -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+    </Match>
+</FindBugsFilter>

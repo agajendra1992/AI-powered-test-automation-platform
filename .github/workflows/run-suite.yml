@@ -1,0 +1,172 @@
+# Reusable: run one TestNG suite (one browser, one shard) and publish results.
+# Called by ci.yml, regression.yml and cross-browser.yml; not triggered directly.
+name: Run test suite
+
+on:
+  workflow_call:
+    inputs:
+      suite:
+        description: TestNG suite file, e.g. testng-smoke.xml
+        type: string
+        required: true
+      browser:
+        type: string
+        default: chromium
+      environment:
+        description: local (bundled demo app started in the job), qa or staging
+        type: string
+        default: local
+      tags:
+        description: Optional Cucumber tag expression; replaces the runner's own tags
+        type: string
+        default: ''
+      shard-index:
+        type: number
+        default: 0
+      shard-total:
+        type: number
+        default: 1
+      threads:
+        type: number
+        default: 4
+      retries:
+        description: Retries per failed scenario (failed attempts stay in the report)
+        type: number
+        default: 0
+    secrets:
+      AUTH_USERNAME:
+        required: false
+      AUTH_PASSWORD:
+        required: false
+      OAUTH_CLIENT_SECRET:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ inputs.suite }} · ${{ inputs.browser }} · shard ${{ inputs.shard-index }}/${{ inputs.shard-total }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    # qa/staging secrets live in GitHub Environments of the same name (protection rules apply) and
+    # those runs are recorded as deployments. Demo-app runs (local) create no deployment record,
+    # so PR timelines stay clean.
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: ${{ inputs.environment != 'local' }}
+    env:
+      SUITE: ${{ inputs.suite }}
+      BROWSER: ${{ inputs.browser }}
+      TEST_ENV: ${{ inputs.environment }}
+      TAGS: ${{ inputs.tags }}
+      SHARD_INDEX: ${{ inputs.shard-index }}
+      SHARD_TOTAL: ${{ inputs.shard-total }}
+      THREADS: ${{ inputs.threads }}
+      RETRIES: ${{ inputs.retries }}
+    steps:
+      - name: Validate inputs
+        id: meta
+        run: |
+          [[ "$SUITE" =~ ^testng-[a-z0-9-]+\.xml$ ]] || { echo "::error::Invalid suite '$SUITE'"; exit 1; }
+          [[ "$BROWSER" =~ ^(chromium|firefox|webkit|chrome|msedge)$ ]] || { echo "::error::Invalid browser '$BROWSER'"; exit 1; }
+          [[ "$TEST_ENV" =~ ^(local|qa|staging)$ ]] || { echo "::error::Invalid environment '$TEST_ENV'"; exit 1; }
+          (( SHARD_INDEX >= 0 && SHARD_INDEX < SHARD_TOTAL )) || { echo "::error::Invalid shard $SHARD_INDEX/$SHARD_TOTAL"; exit 1; }
+          echo "id=${SUITE%.xml}-${BROWSER}-${TEST_ENV}-shard${SHARD_INDEX}of${SHARD_TOTAL}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # ---- Bundled demo application (environment=local only) -----------------------------
+      - name: Set up Python for the demo app
+        if: inputs.environment == 'local'
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: sut/requirements.txt
+
+      - name: Start the demo app
+        if: inputs.environment == 'local'
+        run: |
+          pip install -q -r sut/requirements.txt
+          mkdir -p target
+          nohup python -m uvicorn app:app --app-dir sut --port 8000 --log-level warning > target/sut.log 2>&1 &
+          # Poll the health endpoint (no fixed sleep): up to 30 attempts, 1 s apart.
+          curl -fsS --retry 30 --retry-delay 1 --retry-all-errors http://localhost:8000/api/health
+
+      # ---- Browsers (skipped for suites that never open one) ----------------------------
+      - name: Cache Playwright browsers
+        if: inputs.suite != 'testng-api.xml' && inputs.suite != 'testng-unit.xml'
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ inputs.browser }}-${{ hashFiles('pom.xml') }}
+
+      - name: Install browser and OS dependencies
+        if: inputs.suite != 'testng-api.xml' && inputs.suite != 'testng-unit.xml'
+        run: mvn -B -ntp -q exec:java -Dexec.mainClass=com.microsoft.playwright.CLI -Dexec.args="install --with-deps $BROWSER"
+
+      # ---- Tests -------------------------------------------------------------------------
+      - name: Run ${{ inputs.suite }}
+        env:
+          # Empty for environment=local (the demo app's throwaway values in config/local.properties apply).
+          AUTH_USERNAME: ${{ secrets.AUTH_USERNAME }}
+          AUTH_PASSWORD: ${{ secrets.AUTH_PASSWORD }}
+          OAUTH_CLIENT_SECRET: ${{ secrets.OAUTH_CLIENT_SECRET }}
+          # API/unit suites need no browser; stop Playwright from downloading them at start-up.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: ${{ (inputs.suite == 'testng-api.xml' || inputs.suite == 'testng-unit.xml') && '1' || '0' }}
+        run: |
+          args=(-DsuiteXmlFile="$SUITE" -Dbrowser="$BROWSER" -Denv="$TEST_ENV" -Dthreads="$THREADS"
+                -Dshard.index="$SHARD_INDEX" -Dshard.total="$SHARD_TOTAL" -Dretry.count="$RETRIES")
+          if [[ -n "$TAGS" ]]; then args+=("-Dcucumber.filter.tags=$TAGS"); fi
+          mvn -B -ntp test "${args[@]}"
+
+      - name: Job summary
+        if: always()
+        run: python3 scripts/ci_summary.py target/execution-summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      # ---- Artifacts ---------------------------------------------------------------------
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: allure-results-${{ steps.meta.outputs.id }}
+          path: target/allure-results
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
+
+      - name: Upload execution summary
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: summary-${{ steps.meta.outputs.id }}
+          path: target/execution-summary.json
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
+
+      # Traces can contain request headers and page content: kept short and only on failure.
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: failure-evidence-${{ steps.meta.outputs.id }}
+          path: |
+            target/test-failures
+            target/artifacts
+            target/logs
+            target/cucumber-reports
+            target/surefire-reports
+            target/sut.log
+          if-no-files-found: ignore
+          retention-days: 7
+          overwrite: true

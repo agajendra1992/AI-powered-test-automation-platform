@@ -1,0 +1,41 @@
+# Weekly and on demand: full regression on Chromium, Firefox and WebKit.
+name: Cross-browser
+
+on:
+  schedule:
+    - cron: '30 9 * * 0'   # 09:30 IST (04:00 UTC) every Sunday
+      timezone: Asia/Kolkata
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        options: [local, qa, staging]
+        default: local
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cross-browser-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  browsers:
+    name: Regression
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    uses: ./.github/workflows/run-suite.yml
+    with:
+      suite: testng-regression.xml
+      browser: ${{ matrix.browser }}
+      environment: ${{ inputs.environment || vars.SCHEDULED_TEST_ENV || 'local' }}
+      retries: 1
+    secrets: inherit
+
+  report:
+    name: Report
+    needs: browsers
+    if: always() && needs.browsers.result != 'skipped'
+    uses: ./.github/workflows/report.yml

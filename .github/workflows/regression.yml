@@ -1,0 +1,76 @@
+# Nightly (weekdays) and on demand: full regression, split across parallel shards.
+name: Regression
+
+on:
+  schedule:
+    - cron: '30 7 * * 1-5'   # 07:30 IST (02:00 UTC), Monday to Friday
+      timezone: Asia/Kolkata
+  workflow_dispatch:
+    inputs:
+      browser:
+        type: choice
+        options: [chromium, firefox, webkit, chrome, msedge]
+        default: chromium
+      environment:
+        description: local runs the bundled demo app; qa/staging need GitHub Environment secrets.
+          Scheduled runs use the repository variable SCHEDULED_TEST_ENV (default local)
+        type: choice
+        options: [local, qa, staging]
+        default: local
+      shards:
+        description: Parallel CI machines
+        type: choice
+        options: ['1', '2', '3', '4', '6']
+        default: '3'
+      tags:
+        description: Optional Cucumber tag expression (replaces the runner's own tags)
+        type: string
+        default: ''
+      retries:
+        type: choice
+        options: ['0', '1', '2']
+        default: '1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: regression-${{ github.ref }}-${{ inputs.environment || vars.SCHEDULED_TEST_ENV || 'local' }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Plan shards
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      shards: ${{ steps.plan.outputs.shards }}
+    steps:
+      - id: plan
+        env:
+          SHARDS: ${{ inputs.shards || '3' }}
+        run: python3 -c "import json,os; print('shards=' + json.dumps(list(range(int(os.environ['SHARDS'])))))" >> "$GITHUB_OUTPUT"
+
+  regression:
+    name: Regression
+    needs: plan
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    uses: ./.github/workflows/run-suite.yml
+    with:
+      suite: testng-regression.xml
+      browser: ${{ inputs.browser || 'chromium' }}
+      environment: ${{ inputs.environment || vars.SCHEDULED_TEST_ENV || 'local' }}
+      tags: ${{ inputs.tags || '' }}
+      shard-index: ${{ matrix.shard }}
+      shard-total: ${{ fromJSON(inputs.shards || '3') }}
+      retries: ${{ fromJSON(inputs.retries || '1') }}
+    secrets: inherit
+
+  report:
+    name: Report
+    needs: regression
+    if: always() && needs.regression.result != 'skipped'
+    uses: ./.github/workflows/report.yml

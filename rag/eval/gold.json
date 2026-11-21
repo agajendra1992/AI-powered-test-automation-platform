@@ -1,0 +1,17 @@
+[
+  {"query": "How do I refund part of a payment?", "expected": ["Partially and then fully refund a payment"]},
+  {"query": "refund more than the captured amount", "expected": ["Refunding more than the captured amount is rejected"]},
+  {"query": "declined card payment returns 402", "expected": ["A declined card returns 402"]},
+  {"query": "which step submits a card payment through the API", "expected": ["PaymentApiSteps.java"]},
+  {"query": "sign in with a wrong password shows an error", "expected": ["login/login.feature"]},
+  {"query": "create a new user through the API", "expected": ["Create a new user"]},
+  {"query": "page object for the payment form", "expected": ["PaymentPage.java"]},
+  {"query": "API service to delete a user", "expected": ["UserService.java"]},
+  {"query": "how does the MCP server decide a run passed or failed", "expected": ["docs/MCP.md"]},
+  {"query": "how to configure the AI provider and token budget", "expected": ["docs/AI.md"]},
+  {"query": "customer registration end to end journey", "expected": ["e2e/customer_registration.feature"]},
+  {"query": "upload a file and see the result", "expected": ["FilesPage.java", "user_management.feature"]},
+  {"query": "authentication schemes accepted by the users API", "expected": ["Supported authentication schemes are accepted (<auth>)"]},
+  {"query": "why must I not put a password on an Allure Step parameter", "expected": ["README.md", "docs/ARCHITECTURE_DECISIONS.md"]},
+  {"query": "run tests in Docker against firefox", "expected": ["README.md"]}
+]

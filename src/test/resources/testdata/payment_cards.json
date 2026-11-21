@@ -1,0 +1,8 @@
+{
+  "_comment": "Public payment-network test card numbers only. Never place real card data here.",
+  "valid":          { "cardholder": "Test Customer", "cardNumber": "4242424242424242", "expiry": "12/30", "cvv": "123" },
+  "declined":       { "cardholder": "Test Customer", "cardNumber": "4000000000000002", "expiry": "12/30", "cvv": "123" },
+  "invalid number": { "cardholder": "Test Customer", "cardNumber": "4242424242424241", "expiry": "12/30", "cvv": "123" },
+  "expired":        { "cardholder": "Test Customer", "cardNumber": "4242424242424242", "expiry": "01/20", "cvv": "123" },
+  "invalid cvv":    { "cardholder": "Test Customer", "cardNumber": "4242424242424242", "expiry": "12/30", "cvv": "12" }
+}

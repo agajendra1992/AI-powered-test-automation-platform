@@ -1,0 +1,15 @@
+<configuration>
+    <!-- Thread + scenario in every line makes parallel logs readable. -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder><pattern>%d{HH:mm:ss.SSS} %-5level [%thread] [%X{scenario:-}] %logger{20} - %msg%n</pattern></encoder>
+    </appender>
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>target/logs/execution.log</file>
+        <encoder><pattern>%d{ISO8601} %-5level [%thread] [%X{scenario:-}] [%X{correlationId:-}] %logger - %msg%n</pattern></encoder>
+    </appender>
+    <logger name="io.qaplatform" level="INFO"/>
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

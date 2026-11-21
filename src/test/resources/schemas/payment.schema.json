@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Payment",
+  "type": "object",
+  "required": ["id", "status", "amount", "currency", "last4", "reference", "refundedAmount", "createdAt"],
+  "properties": {
+    "id": { "type": "string" },
+    "status": { "enum": ["APPROVED", "DECLINED", "PARTIALLY_REFUNDED", "REFUNDED"] },
+    "amount": { "type": "number", "exclusiveMinimum": 0 },
+    "currency": { "enum": ["USD", "EUR", "GBP", "INR"] },
+    "last4": { "type": "string", "pattern": "^[0-9]{4}$" },
+    "reference": { "type": "string", "pattern": "^PAY-" },
+    "refundedAmount": { "type": "number", "minimum": 0 },
+    "createdAt": { "type": "string" }
+  }
+}

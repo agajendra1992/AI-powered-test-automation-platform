@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "qa-platform": {
+      "command": "java",
+      "args": ["-jar", "mcp-server/target/qa-mcp-server.jar"],
+      "env": {
+        "QA_MCP_PROJECT_DIR": ".",
+        "QA_MCP_STDIO_ROLE": "runner"
+      }
+    }
+  }
+}

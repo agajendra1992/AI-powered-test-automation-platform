@@ -1,0 +1,8 @@
+# RAG service. Pinned; upgrade together and re-run `pytest` + the retrieval evaluation.
+fastapi==0.165.0
+uvicorn==0.54.0
+chromadb==1.5.9
+pypdf==7.1.1
+httpx==0.28.1
+anthropic==2.11.0
+pydantic==2.14.4
