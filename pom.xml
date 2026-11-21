@@ -35,7 +35,7 @@
         <checkstyle.version>14.4.0</checkstyle.version>
         <spotbugs.plugin.version>4.10.5.0</spotbugs.plugin.version>
         <spotbugs.version>4.10.5</spotbugs.version>
-        <allure.maven.version>2.15.2</allure.maven.version>
+        <allure.maven.version>2.18.0</allure.maven.version>
         <exec.plugin.version>3.6.2</exec.plugin.version>
 
         <!-- Execution defaults; override with -Dname=value -->
