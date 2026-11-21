@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Bundled demo application under test. In-memory, demo credentials only: NOT for production.
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
