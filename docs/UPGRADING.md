@@ -38,3 +38,15 @@ Compatibility notes:
   `Authorization: Bearer` and pins `anthropic-version`.
 * Prompt templates (`mcp-server/src/main/resources/prompts`) are versioned: bump `version:` when
   a prompt changes, so results can be traced to the prompt that produced them.
+
+## Held-back upgrades (Dependabot ignore rules)
+
+| Dependency | Held at | Why |
+|---|---|---|
+| maven-surefire-plugin | 3.5.x | 3.6+ runs TestNG on the JUnit Platform and rejects `suiteXmlFiles` |
+| Cucumber | 7.x | 8 changed `AbstractTestNGCucumberTests.scenarios` (now takes `ITestContext`); migrate `BaseCucumberRunner`, then run all suites on 3 browsers |
+| Allure | 2.x | 3.0 removed `Allure.addAttachment(String, String, InputStream, String)` used by `AllureAttachments` |
+| mcp (Python, ai-orchestration) | 1.x | langchain-mcp-adapters requires 1.x |
+
+To try one of them, remove its rule from `.github/dependabot.yml`; Dependabot opens the PR on its next run.
+

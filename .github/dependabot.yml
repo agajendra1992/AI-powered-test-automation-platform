@@ -45,6 +45,16 @@ updates:
       # 2.x/3.x changed the API used by SchemaValidator (docs/UPGRADING.md).
       - dependency-name: "com.networknt:json-schema-validator"
         update-types: ["version-update:semver-major"]
+      # 3.6+ runs TestNG on the JUnit Platform and drops suiteXmlFiles: incompatible with the TestNG suites
+      # and the no-JUnit rule. Stay on 3.5.x (docs/UPGRADING.md).
+      - dependency-name: "org.apache.maven.plugins:maven-surefire-plugin"
+        versions: [">=3.6.0"]
+      # Major versions need a code migration (Cucumber 8: TestNG runner API; Allure 3: attachment API).
+      # Planned as separate work (IMPLEMENTATION_STATUS.md, known issues), not as automatic PRs.
+      - dependency-name: "io.cucumber:*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "io.qameta.allure:*"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: deps
 
@@ -69,6 +79,10 @@ updates:
         patterns: ["*"]
         update-types: [minor, patch]
     ignore:
+      # 3.6+ runs TestNG on the JUnit Platform and drops suiteXmlFiles: incompatible with the TestNG suites
+      # and the no-JUnit rule. Stay on 3.5.x (docs/UPGRADING.md).
+      - dependency-name: "org.apache.maven.plugins:maven-surefire-plugin"
+        versions: [">=3.6.0"]
       # Must stay in step with the framework's Cucumber BDD version (see mcp-server/pom.xml)
       - dependency-name: "io.cucumber:*"
       - dependency-name: "com.microsoft.playwright:*"
@@ -120,6 +134,10 @@ updates:
     groups:
       ai-orchestration:
         patterns: ["*"]
+    ignore:
+      # langchain-mcp-adapters needs the MCP Python SDK 1.x (2.x cannot be installed with it).
+      - dependency-name: "mcp"
+        versions: [">=2.0.0"]
     commit-message:
       prefix: deps(ai)
 

@@ -233,6 +233,11 @@ CI job on GitHub.
 
 ## Known issues / decisions to revisit
 
+* Dependency upgrades held back on purpose (Dependabot ignore rules, 2026-11-21): **Surefire 3.6+** (runs TestNG on
+  the JUnit Platform and drops `suiteXmlFiles`: breaks the suites and the no-JUnit rule); **Cucumber 8** (changed the
+  TestNG runner API `BaseCucumberRunner` overrides) and **Allure 3** (removed the attachment method `AllureAttachments`
+  uses) need a code migration and a full 3-browser run; **MCP Python SDK 2.x** cannot be installed with
+  langchain-mcp-adapters. Revisit each when its dependants catch up.
 * `mvn allure:report` mis-quotes the output path when the project path contains spaces
   (it wrote to a literal `"…/allure-maven-plugin"` directory here). `scripts/allure-report.sh`
   calls the pinned CLI directly and works for any path; CI paths have no spaces.
