@@ -4,6 +4,7 @@ import io.cucumber.testng.AbstractTestNGCucumberTests;
 import io.cucumber.testng.PickleWrapper;
 import io.qaplatform.core.execution.Sharding;
 import io.qaplatform.ui.browser.BrowserPool;
+import org.testng.ITestContext;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.DataProvider;
 
@@ -18,8 +19,8 @@ public abstract class BaseCucumberRunner extends AbstractTestNGCucumberTests {
 
     @Override
     @DataProvider(parallel = true)
-    public Object[][] scenarios() {
-        Object[][] all = super.scenarios();
+    public Object[][] scenarios(ITestContext context) {
+        Object[][] all = super.scenarios(context);
         int total = Integer.getInteger("shard.total", 1);
         int index = Integer.getInteger("shard.index", 0);
         return Sharding.select(Arrays.asList(all), index, total, row -> {

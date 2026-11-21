@@ -29,6 +29,6 @@ table records how each is closed and in which phase, so nothing is silently drop
 | Risk | Mitigation |
 |---|---|
 | Cucumber + TestNG parallelism configured twice (suite `parallel` and DataProvider) | Only the DataProvider is parallel; suites set `data-provider-thread-count` |
-| Allure duplicates when both TestNG and Cucumber adapters are present | Only `allure-cucumber7-jvm` is on the classpath |
+| Allure duplicates when both TestNG and Cucumber adapters are present | Only `allure-cucumber8-jvm` is on the classpath (was `allure-cucumber7-jvm` before the 2026-11-21 upgrade) |
 | Third-party demo sites are unstable | Bundled demo app (`sut/`) with deterministic data |
 | Leaking tokens via Allure attachments | `Redactor` applied to every API attachment and log line |

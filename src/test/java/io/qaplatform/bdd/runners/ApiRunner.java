@@ -12,7 +12,7 @@ import io.cucumber.testng.CucumberOptions;
             "html:target/cucumber-reports/api.html",
             "json:target/cucumber-reports/api.json",
             "rerun:target/cucumber-reports/api-rerun.txt",
-            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
+            "io.qameta.allure.cucumber8jvm.AllureCucumber8Jvm"
         },
         monochrome = true)
 public class ApiRunner extends BaseCucumberRunner {

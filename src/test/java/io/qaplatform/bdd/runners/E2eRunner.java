@@ -12,7 +12,7 @@ import io.cucumber.testng.CucumberOptions;
             "html:target/cucumber-reports/e2e.html",
             "json:target/cucumber-reports/e2e.json",
             "rerun:target/cucumber-reports/e2e-rerun.txt",
-            "io.qameta.allure.cucumber7jvm.AllureCucumber7Jvm"
+            "io.qameta.allure.cucumber8jvm.AllureCucumber8Jvm"
         },
         monochrome = true)
 public class E2eRunner extends BaseCucumberRunner {

@@ -16,10 +16,10 @@
 
         <!-- Dependency versions: single source of truth (see docs/UPGRADING.md) -->
         <playwright.version>1.65.0</playwright.version>
-        <cucumber.version>7.34.9</cucumber.version>
+        <cucumber.version>8.0.4</cucumber.version>
         <testng.version>7.12.0</testng.version>
         <assertj.version>3.27.7</assertj.version>
-        <allure.version>2.35.6</allure.version>
+        <allure.version>3.1.1</allure.version>
         <!-- Report generator CLI is versioned independently of the Java adapters -->
         <allure.commandline.version>2.46.2</allure.commandline.version>
         <aspectj.version>1.9.27</aspectj.version>
@@ -99,6 +99,11 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
+        <!-- Cucumber 8's JSON report plugin needs Jackson 2 databind + jdk8 (no longer bundled). -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jdk8</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
@@ -140,7 +145,7 @@
         <!-- Only the Cucumber adapter is used, so each scenario appears once in Allure (no allure-testng). -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
-            <artifactId>allure-cucumber7-jvm</artifactId>
+            <artifactId>allure-cucumber8-jvm</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
