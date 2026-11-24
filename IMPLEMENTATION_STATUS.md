@@ -9,13 +9,24 @@ Playwright 1.65.0, demo app on `http://localhost:8000`.
 |---|---|
 | 0 Assessment, gap analysis, plan | ✅ Done (`docs/CURRENT_ARCHITECTURE.md`, `docs/GAP_ANALYSIS.md`, `docs/IMPLEMENTATION_PLAN.md`) |
 | 1 Core Java + Cucumber/TestNG BDD | ✅ Done and verified (below) |
-| 2 GitHub Actions + test Docker image | ✅ Done; Docker verified locally, workflows linted and their steps run locally, **not yet run on GitHub** (below) |
+| 2 GitHub Actions + test Docker image | ✅ Done; Docker verified locally; workflows have run green on GitHub since 2026-11-20 (CI, regression 3 shards, cross-browser) |
 | 3 MCP server | ✅ Done and verified with two independent MCP clients (below); Docker image for it is part of Phase 7 |
 | 4 LLM integration | ✅ Built and unit/integration-tested; live model verified only partly (local llama3, too slow on this machine; no cloud key available) |
 | 5 RAG service | ✅ Done; verified with real ONNX embeddings and through MCP (no cloud LLM answer yet) |
 | 6 Intelligent QA | ✅ Done; verified on real runs (imported CI-like results + real MCP runs) |
 | 7 Production readiness | ✅ Done; platform verified in Docker; security and performance validation documented |
 | Update: LangChain + LangGraph (`ai-orchestration/`) | ✅ Done (phases 4b–7b, below); verified against the live MCP server, RAG service and Java framework **without a model** (rules path). The LLM path is tested with fake models and a stubbed Anthropic endpoint only, **not with a live model** |
+
+## Update: accessibility and visual testing (2026-11-24)
+
+| Check | Result |
+|---|---|
+| Unit tests (`ImageDiffTest`, `AccessibilityPolicyTest`) | pass |
+| `@accessibility` on chromium | 5/5; injected violations caught (docs/ACCESSIBILITY.md) |
+| `@visual` on chromium (local mac baselines) | 4/4; missing baseline and an injected CSS change both fail (docs/VISUAL_TESTING.md) |
+| Regression on chromium | 46/46 (37 + 5 accessibility + 4 visual) |
+| SpotBugs | clean |
+| Video-path warning on failed UI scenarios | fixed: the video is requested only when `video.enabled=true` |
 
 ## Phase 1 verification log (actual results)
 
@@ -67,8 +78,7 @@ UI steps. No speed-up is claimed until it is measured against a real environment
 | `.github/dependabot.yml` (actions, Maven, pip, demo-app image; groups, 7/30-day cooldown) | Valid against SchemaStore `dependabot-2.0` schema (check-jsonschema 0.39.0) |
 | `scripts/check_versions.py` + first step of the CI build job | Passes on 1.65.0/1.65.0; with the Dockerfile set to 1.64.0 it fails with the exact `FROM` line to use |
 
-**Not verified:** the workflows have not run on GitHub (this project is not yet a GitHub
-repository). Unverified until the first run: artifact upload/download and merge across shards,
+**Not verified at the time (2026-11-19; since verified, see Phases):** the workflows had not run on GitHub. Unverified until the first run: artifact upload/download and merge across shards,
 Playwright browser cache, `--with-deps` on Ubuntu 24.04, GitHub Environments secret injection,
 the scheduled triggers and their time zone, Dependabot's first PRs (including updating
 SHA-pinned actions and their version comments), and `docker.yml` on a Linux runner (file ownership of the mounted
@@ -236,8 +246,6 @@ CI job on GitHub.
 * Dependency upgrades held back on purpose (Dependabot ignore rules, 2026-11-21): **Surefire 3.6+** (runs TestNG on
   the JUnit Platform and drops `suiteXmlFiles`: breaks the suites and the no-JUnit rule) and **MCP Python SDK 2.x**
   (cannot be installed with langchain-mcp-adapters). Cucumber 8 and Allure 3 were migrated on 2026-11-21 (docs/UPGRADING.md).
-* `BrowserSession.close` asks for the video path even when video is off, which logs "Video recording has not been
-  started" on every failed UI scenario. Evidence is still attached and the context still closed; harmless but noisy.
 * `mvn allure:report` mis-quotes the output path when the project path contains spaces
   (it wrote to a literal `"…/allure-maven-plugin"` directory here). `scripts/allure-report.sh`
   calls the pinned CLI directly and works for any path; CI paths have no spaces.
