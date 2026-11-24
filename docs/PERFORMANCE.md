@@ -74,3 +74,29 @@ RAG_CPUS=4 docker compose --profile platform up -d --wait rag
 ```
 
 RAG retrieval quality: `POST /rag/evaluate` with `rag/eval/gold.json` (recall@k, MRR per mode).
+
+## API load testing (k6)
+
+`perf/k6/api-load.js` exercises the API the way an admin session does: list users, then create, read
+and delete a user, with one second of think time. One token is shared by all virtual users (sign-in is
+not under test).
+
+| Profile | Load | Use |
+|---|---|---|
+| `smoke` | 1 user, 30 s | every PR (`ci.yml`, job *Performance smoke*): checks the script and the thresholds |
+| `load` | ramp to 20 users, hold 1 min | weekly (`performance.yml`, Saturday 10:00 IST) and on demand |
+| `stress` | ramp to 100 users | on demand, to find the breaking point |
+
+**Thresholds** (k6 exits non-zero when one is crossed, failing the job): error rate under 1%, p95 under
+500 ms and p99 under 1 s overall, p95 under 300 ms for list and get, p95 under 500 ms for create, and
+over 99% of checks passing. Each run writes `target/perf/k6-summary.json` (uploaded as an artifact).
+
+```bash
+docker run --rm --network host -v "$PWD:/work" -w /work -e PROFILE=smoke grafana/k6:2.3.0 run perf/k6/api-load.js
+# macOS (Docker Desktop): use -e BASE_URL=http://host.docker.internal:8000 instead of --network host
+```
+
+Measured on this machine (2026-11-24, smoke profile, demo app): 121 requests, 0% errors, p95 6.3 ms.
+A first run with an invalid test email (`@example.test`, rejected by the API) failed the error-rate
+and checks thresholds, which shows the gate works. The demo app is in-memory and single-process,
+so its numbers say nothing about a real system: point `BASE_URL` at a qa environment for real figures.
