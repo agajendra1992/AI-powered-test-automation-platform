@@ -28,6 +28,15 @@ public final class WaitUtils {
         page.waitForLoadState(LoadState.NETWORKIDLE);
     }
 
+    /**
+     * Waits until the page has finished rendering for a snapshot (screenshot or accessibility scan):
+     * no network requests for 500 ms and web fonts loaded. Use before visual and accessibility checks only.
+     */
+    public static void stableRender(Page page) {
+        page.waitForLoadState(LoadState.NETWORKIDLE);
+        page.evaluate("() => document.fonts.ready.then(() => true)");
+    }
+
     /** Polls a non-UI condition (e.g. eventual consistency in a backend) with a timeout. */
     public static void until(String description, Duration timeout, Duration interval, BooleanSupplier condition) {
         Instant deadline = Instant.now().plus(timeout);

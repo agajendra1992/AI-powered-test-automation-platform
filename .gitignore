@@ -18,3 +18,7 @@ secrets/
 ai-orchestration/.venv/
 .ai-data/
 ai-keys*.json
+
+# Visual baselines: only the Linux sets (what CI renders) are committed; local sets are per machine.
+src/test/resources/visual-baselines/*-mac/
+src/test/resources/visual-baselines/*-windows/

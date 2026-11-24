@@ -1,0 +1,71 @@
+# Weekly and on demand: API load test with k6 against the bundled demo app (or a qa environment).
+name: Performance
+
+on:
+  schedule:
+    - cron: '0 10 * * 6'   # Saturday 10:00 IST
+      timezone: Asia/Kolkata
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: smoke (1 user, 30 s), load (20 users, ~2 min), stress (up to 100 users, ~2.5 min)
+        type: choice
+        options: [smoke, load, stress]
+        default: load
+
+permissions:
+  contents: read
+
+concurrency:
+  group: performance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  k6:
+    name: k6 ${{ inputs.profile || 'load' }} profile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PROFILE: ${{ inputs.profile || 'load' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python for the demo app
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: sut/requirements.txt
+
+      - name: Start the demo app
+        run: |
+          pip install -q -r sut/requirements.txt
+          mkdir -p target/perf
+          nohup python -m uvicorn app:app --app-dir sut --port 8000 --log-level warning > target/sut.log 2>&1 &
+          curl -fsS --retry 30 --retry-delay 1 --retry-all-errors http://localhost:8000/api/health
+
+      # shell: bash adds pipefail, so k6's exit code (non-zero on a crossed threshold) survives the tee.
+      - name: Run k6
+        shell: bash
+        run: |
+          [[ "$PROFILE" =~ ^(smoke|load|stress)$ ]] || { echo "::error::Invalid profile '$PROFILE'"; exit 1; }
+          docker run --rm --network host -u "$(id -u):$(id -g)" -v "$PWD:/work" -w /work \
+            -e PROFILE="$PROFILE" -e BASE_URL=http://localhost:8000 grafana/k6:2.3.0 run --quiet perf/k6/api-load.js | tee target/perf/summary.txt
+
+      - name: Job summary
+        if: always()
+        run: |
+          { echo "### k6 $PROFILE profile"; echo '```'; cat target/perf/summary.txt 2>/dev/null || echo "no summary"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload k6 summary
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: k6-${{ env.PROFILE }}-summary
+          path: |
+            target/perf
+            target/sut.log
+          if-no-files-found: ignore
+          retention-days: 30

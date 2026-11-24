@@ -9,7 +9,7 @@ Playwright 1.65.0, demo app on `http://localhost:8000`.
 |---|---|
 | 0 Assessment, gap analysis, plan | ✅ Done (`docs/CURRENT_ARCHITECTURE.md`, `docs/GAP_ANALYSIS.md`, `docs/IMPLEMENTATION_PLAN.md`) |
 | 1 Core Java + Cucumber/TestNG BDD | ✅ Done and verified (below) |
-| 2 GitHub Actions + test Docker image | ✅ Done; Docker verified locally, workflows linted and their steps run locally, **not yet run on GitHub** (below) |
+| 2 GitHub Actions + test Docker image | ✅ Done; Docker verified locally; workflows have run green on GitHub since 2026-11-20 (CI, regression 3 shards, cross-browser) |
 | 3 MCP server | ✅ Done and verified with two independent MCP clients (below); Docker image for it is part of Phase 7 |
 | 4 LLM integration | ✅ Built and unit/integration-tested; live model verified only partly (local llama3, too slow on this machine; no cloud key available) |
 | 5 RAG service | ✅ Done; verified with real ONNX embeddings and through MCP (no cloud LLM answer yet) |
@@ -25,6 +25,30 @@ Playwright 1.65.0, demo app on `http://localhost:8000`.
 | Keyword-rules baseline | safety 100%, intent 95%, selection 100% |
 | Live gpt-4o-mini, prompt v3 + fixes | safety 100%, intent 90%, selection 91%, category 100%, groundedness 100%, $0.004 (docs/AI_EVALUATION.md) |
 | Claude live | **not run**: no Anthropic key configured |
+## Update: notifications and test-management export (2026-11-24)
+
+| Check | Result |
+|---|---|
+| `python3 -m unittest discover -s scripts/tests` | 14/14 (fake HTTP; no live Slack/Teams/Xray/TestRail account) |
+| Dry runs on the real regression output | expected payloads; 46 untagged scenarios listed |
+| actionlint 1.7.12 on all workflows | clean |
+## Update: contract and performance testing (2026-11-24)
+
+| Check | Result |
+|---|---|
+| `testng-contract.xml` (Pact consumer + provider) | 2/2, repeatable; a removed `job` field fails verification (docs/CONTRACT_TESTING.md) |
+| k6 smoke profile (Docker, grafana/k6:2.3.0) | all thresholds pass; a broken request fails the error-rate threshold (docs/PERFORMANCE.md) |
+| actionlint 1.7.12 on `ci.yml`, `performance.yml` | clean |
+## Update: accessibility and visual testing (2026-11-24)
+
+| Check | Result |
+|---|---|
+| Unit tests (`ImageDiffTest`, `AccessibilityPolicyTest`) | pass |
+| `@accessibility` on chromium | 5/5; injected violations caught (docs/ACCESSIBILITY.md) |
+| `@visual` on chromium (local mac baselines) | 4/4; missing baseline and an injected CSS change both fail (docs/VISUAL_TESTING.md) |
+| Regression on chromium | 46/46 (37 + 5 accessibility + 4 visual) |
+| SpotBugs | clean |
+| Video-path warning on failed UI scenarios | fixed: the video is requested only when `video.enabled=true` |
 
 ## Phase 1 verification log (actual results)
 
@@ -76,8 +100,7 @@ UI steps. No speed-up is claimed until it is measured against a real environment
 | `.github/dependabot.yml` (actions, Maven, pip, demo-app image; groups, 7/30-day cooldown) | Valid against SchemaStore `dependabot-2.0` schema (check-jsonschema 0.39.0) |
 | `scripts/check_versions.py` + first step of the CI build job | Passes on 1.65.0/1.65.0; with the Dockerfile set to 1.64.0 it fails with the exact `FROM` line to use |
 
-**Not verified:** the workflows have not run on GitHub (this project is not yet a GitHub
-repository). Unverified until the first run: artifact upload/download and merge across shards,
+**Not verified at the time (2026-11-19; since verified, see Phases):** the workflows had not run on GitHub. Unverified until the first run: artifact upload/download and merge across shards,
 Playwright browser cache, `--with-deps` on Ubuntu 24.04, GitHub Environments secret injection,
 the scheduled triggers and their time zone, Dependabot's first PRs (including updating
 SHA-pinned actions and their version comments), and `docker.yml` on a Linux runner (file ownership of the mounted
@@ -245,8 +268,6 @@ CI job on GitHub.
 * Dependency upgrades held back on purpose (Dependabot ignore rules, 2026-11-21): **Surefire 3.6+** (runs TestNG on
   the JUnit Platform and drops `suiteXmlFiles`: breaks the suites and the no-JUnit rule) and **MCP Python SDK 2.x**
   (cannot be installed with langchain-mcp-adapters). Cucumber 8 and Allure 3 were migrated on 2026-11-21 (docs/UPGRADING.md).
-* `BrowserSession.close` asks for the video path even when video is off, which logs "Video recording has not been
-  started" on every failed UI scenario. Evidence is still attached and the context still closed; harmless but noisy.
 * `mvn allure:report` mis-quotes the output path when the project path contains spaces
   (it wrote to a literal `"…/allure-maven-plugin"` directory here). `scripts/allure-report.sh`
   calls the pinned CLI directly and works for any path; CI paths have no spaces.

@@ -10,6 +10,9 @@ layers (MCP, LLM, RAG; later phases) can be added on top without the core ever d
 | Execution, suites, parallelism | TestNG 7 (`AbstractTestNGCucumberTests`, parallel DataProvider) |
 | Build | Maven, Java 21 |
 | Reporting | Allure (Cucumber adapter only, so no duplicates), Cucumber HTML/JSON, `execution-summary.json` |
+| Notifications, test management | Slack / Teams summary and Jira Xray / TestRail result export from the report job, off until secrets are set (`docs/INTEGRATIONS.md`) |
+| Contract and performance tests | Pact consumer contract + provider verification (`docs/CONTRACT_TESTING.md`); k6 API load tests with thresholds (`docs/PERFORMANCE.md`) |
+| Accessibility and visual checks | axe-core WCAG 2.1 AA scans (`docs/ACCESSIBILITY.md`); screenshot comparison against approved baselines (`docs/VISUAL_TESTING.md`) |
 | Quality gate | Checkstyle (bans JUnit, Selenium, Rest Assured, hard sleeps, empty catches), SpotBugs, Trivy (CI) |
 | CI / containers | GitHub Actions (PR smoke, sharded nightly regression, weekly cross-browser), Docker + Compose |
 | AI integration | MCP server (`mcp-server/`, Java MCP SDK): discovery, execution through the framework, reports, approvals; optional LLM layer (Anthropic SDK, OpenAI, Gemini, local/Ollama) |
@@ -84,7 +87,7 @@ want to select from every non-quarantined scenario.
 ### Standard tags
 
 `@smoke @regression @sanity @critical` (scope) · `@ui @api @e2e` (layer) ·
-`@login @payment @user` (domain) · `@positive @negative` (intent) ·
+`@login @payment @user` (domain) · `@accessibility @visual` (non-functional) · `@positive @negative` (intent) ·
 `@quarantine` (excluded by every runner, never retried) · `@noretry`.
 
 ## Docker
@@ -125,7 +128,8 @@ service and pass `-Denv=qa` plus `-e AUTH_USERNAME -e AUTH_PASSWORD -e OAUTH_CLI
 
 | Workflow | Trigger | What runs |
 |---|---|---|
-| `ci.yml` | every PR, push to `main` | Playwright/Docker version check, Checkstyle + compile + unit tests, then the smoke suite (Chromium) |
+| `ci.yml` | every PR, push to `main` | Playwright/Docker version check, Checkstyle + compile + unit tests, then the smoke suite (Chromium), Pact contract tests and a 30 s k6 performance smoke |
+| `performance.yml` | 10:00 IST Saturday, manual | k6 load (or stress) profile against the demo app, summary on the run page |
 | `regression.yml` | 07:30 IST Mon–Fri, manual | Full regression split over N shards (default 3), merged Allure report |
 | `cross-browser.yml` | 09:30 IST Sunday, manual | Full regression on Chromium, Firefox and WebKit in parallel, merged report |
 | `docker.yml` | PRs that touch Docker/`sut/`/`pom.xml`, manual | Builds both images and runs smoke inside Docker |

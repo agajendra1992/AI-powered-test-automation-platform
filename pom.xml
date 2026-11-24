@@ -27,6 +27,8 @@
         <slf4j.version>2.0.20</slf4j.version>
         <logback.version>1.6.6</logback.version>
         <json-schema-validator.version>1.5.9</json-schema-validator.version>
+        <pact.version>4.7.7</pact.version>
+        <axe.version>4.14.0</axe.version>
 
         <!-- Plugin versions -->
         <compiler.plugin.version>3.16.0</compiler.plugin.version>
@@ -110,6 +112,14 @@
             <version>${json-schema-validator.version}</version>
         </dependency>
 
+        <!-- Accessibility: Deque axe-core run inside the Playwright page (WCAG rules). Its own Playwright
+             dependency is older; Maven's nearest-wins keeps ours (${playwright.version}). -->
+        <dependency>
+            <groupId>com.deque.html.axe-core</groupId>
+            <artifactId>playwright</artifactId>
+            <version>${axe.version}</version>
+        </dependency>
+
         <!-- Reporting: Allure API (steps/attachments) for the core library -->
         <dependency>
             <groupId>io.qameta.allure</groupId>
@@ -146,6 +156,19 @@
         <dependency>
             <groupId>io.qameta.allure</groupId>
             <artifactId>allure-cucumber8-jvm</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Contract testing (tests only): consumer pacts and provider verification, no JUnit modules. -->
+        <dependency>
+            <groupId>au.com.dius.pact</groupId>
+            <artifactId>consumer</artifactId>
+            <version>${pact.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>au.com.dius.pact</groupId>
+            <artifactId>provider</artifactId>
+            <version>${pact.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

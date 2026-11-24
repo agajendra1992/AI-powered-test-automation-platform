@@ -144,6 +144,17 @@ jobs:
           retention-days: 14
           overwrite: true
 
+      # Cucumber JSON feeds the test-management export in the report job (scenario names and step results only).
+      - name: Upload Cucumber JSON
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cucumber-json-${{ steps.meta.outputs.id }}
+          path: target/cucumber-reports/*.json
+          if-no-files-found: ignore
+          retention-days: 14
+          overwrite: true
+
       - name: Upload execution summary
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -162,6 +173,7 @@ jobs:
           name: failure-evidence-${{ steps.meta.outputs.id }}
           path: |
             target/test-failures
+            target/visual
             target/artifacts
             target/logs
             target/cucumber-reports
