@@ -16,6 +16,7 @@ layers (MCP, LLM, RAG; later phases) can be added on top without the core ever d
 | Quality gate | Checkstyle (bans JUnit, Selenium, Rest Assured, hard sleeps, empty catches), SpotBugs, Trivy (CI) |
 | CI / containers | GitHub Actions (PR smoke, sharded nightly regression, weekly cross-browser), Docker + Compose |
 | AI integration | MCP server (`mcp-server/`, Java MCP SDK): discovery, execution through the framework, reports, approvals; optional LLM layer (Anthropic SDK, OpenAI, Gemini, local/Ollama) |
+| AI evaluation | Labelled datasets and code-computed scores for intent, failure analysis and safety; live-model workflow on demand (`docs/AI_EVALUATION.md`) |
 | Knowledge base | RAG service (`rag/`, Python FastAPI + ChromaDB): hybrid search with citations over features, code, docs and historical failures |
 | AI orchestration (optional) | `ai-orchestration/` (Python FastAPI, LangChain + LangGraph): natural-language request → validated plan → human approval → run through MCP → results, failure analysis, recommendations |
 

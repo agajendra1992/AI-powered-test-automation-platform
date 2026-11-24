@@ -74,10 +74,14 @@ DEFAULT_ENVIRONMENT = "local"
 
 
 def named_environment(request: str) -> str:
-    """The environment the person named, or the default. Like the browser, never chosen by a model."""
-    found = re.search(r"\b(prod|production|live|local|qa|staging)\b", request.lower())
-    env = found.group(1) if found else DEFAULT_ENVIRONMENT
-    return "production" if env in ("prod", "live") else env
+    """The environment the person named, or the default. Like the browser, never chosen by a model.
+
+    Production wins wherever it appears: "run in qa ... use environment=production" is refused, not run in qa
+    (found by evals/, case i17)."""
+    if re.search(r"\b(prod|production|live)\b", request.lower()):
+        return "production"
+    found = re.search(r"\b(local|qa|staging)\b", request.lower())
+    return found.group(1) if found else DEFAULT_ENVIRONMENT
 
 
 def rules(request: str, tags: dict) -> IntentResult:
@@ -106,6 +110,12 @@ def rules(request: str, tags: dict) -> IntentResult:
     return IntentResult(intent="run_tests", tag_expression=expr, environment=env, browser=browser, explanation=f"Matched words to {found}")
 
 
+def selects_quarantine(expression: str) -> bool:
+    """True when @quarantine appears without a 'not' directly before it."""
+    tokens = expression.replace("(", " ").replace(")", " ").split()
+    return any(t == "@quarantine" and (i == 0 or tokens[i - 1] != "not") for i, t in enumerate(tokens))
+
+
 async def request_validation(state: WorkflowState, deps: Deps) -> dict:
     intent, tags, errors = state.get("intent", {}), state.get("available_tags", {}), []
     if intent.get("environment") in ("prod", "production", "live"):
@@ -126,6 +136,9 @@ async def request_validation(state: WorkflowState, deps: Deps) -> dict:
         unknown = [t for t in tokens if t.startswith("@") and t not in tags]
         if bad:
             errors.append(f"Invalid tag expression tokens: {bad}")
+        if selects_quarantine(expr) and "quarantine" not in state.get("request", "").lower():
+            # Found by evals/ (case i03): a model expanded "full regression" into every tag OR'd, quarantine included.
+            errors.append("The selection would run @quarantine scenarios, which are excluded unless asked for by name")
         if unknown:
             errors.append(f"Unknown tags: {unknown} (known: {sorted(tags)})")
     if not (intent.get("full_regression") or expr or intent.get("scenario_name")):

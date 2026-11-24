@@ -17,6 +17,14 @@ Playwright 1.65.0, demo app on `http://localhost:8000`.
 | 7 Production readiness | ✅ Done; platform verified in Docker; security and performance validation documented |
 | Update: LangChain + LangGraph (`ai-orchestration/`) | ✅ Done (phases 4b–7b, below); verified against the live MCP server, RAG service and Java framework **without a model** (rules path). The LLM path is tested with fake models and a stubbed Anthropic endpoint only, **not with a live model** |
 
+## Update: AI evaluation (2026-11-24)
+
+| Check | Result |
+|---|---|
+| ai-orchestration tests (incl. `test_evals.py`, two new guardrail tests) | 41 passed, 3 skipped |
+| Keyword-rules baseline | safety 100%, intent 95%, selection 100% |
+| Live gpt-4o-mini, prompt v3 + fixes | safety 100%, intent 90%, selection 91%, category 100%, groundedness 100%, $0.004 (docs/AI_EVALUATION.md) |
+| Claude live | **not run**: no Anthropic key configured |
 ## Update: notifications and test-management export (2026-11-24)
 
 | Check | Result |

@@ -1,0 +1,79 @@
+# On demand: evaluate the AI layer (intent + failure analysis) with a live model against the labelled datasets.
+# Every pull request already runs the keyword-rules baseline and the scorer's own tests (ci.yml, AI orchestration job).
+name: AI evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        type: choice
+        options: [openai, anthropic]
+        default: openai
+      model:
+        description: Model id, e.g. gpt-4o-mini or claude-opus-5-5
+        type: string
+        default: gpt-4o-mini
+      price-input-per-mtok:
+        description: USD per million input tokens (for the cost estimate only)
+        type: string
+        default: '0.15'
+      price-output-per-mtok:
+        type: string
+        default: '0.60'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-eval-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    name: Evaluate ${{ inputs.provider }} / ${{ inputs.model }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ai-orchestration/requirements*.txt
+
+      - name: Install
+        run: pip install -q -r ai-orchestration/requirements.txt
+
+      # Fails the job when a threshold is missed (safety must be 100%). About 30 model calls / 20k tokens.
+      - name: Evaluate
+        working-directory: ai-orchestration
+        env:
+          AI_LLM_PROVIDER: ${{ inputs.provider }}
+          AI_LLM_MODEL: ${{ inputs.model }}
+          AI_PRICE_INPUT_PER_MTOK: ${{ inputs.price-input-per-mtok }}
+          AI_PRICE_OUTPUT_PER_MTOK: ${{ inputs.price-output-per-mtok }}
+          AI_DAILY_TOKEN_BUDGET: '100000'
+          AI_LLM_MAX_TOKENS: '1000'
+          OPENAI_API_KEY: ${{ inputs.provider == 'openai' && secrets.OPENAI_API_KEY || '' }}
+          ANTHROPIC_API_KEY: ${{ inputs.provider == 'anthropic' && secrets.ANTHROPIC_API_KEY || '' }}
+        shell: bash
+        run: |
+          mkdir -p ../target
+          python -m evals.run_eval --gate --json ../target/ai-eval.json | tee ../target/ai-eval.txt
+
+      - name: Job summary
+        if: always()
+        run: |
+          { echo "### AI evaluation"; echo '```'; cat target/ai-eval.txt 2>/dev/null || echo "no report"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ai-eval-${{ inputs.provider }}
+          path: target/ai-eval.*
+          if-no-files-found: ignore
+          retention-days: 30

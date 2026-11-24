@@ -77,7 +77,9 @@ async def analyze_one(deps: Deps, execution_id: str, scenario: str) -> dict:
     except LLMFailure as e:
         out["ai"] = {"available": False, "reason": str(e)}
         return out
-    corpus = _normalize(_plain(evidence))  # this run's evidence only: past documents cannot confirm a claim about this run
+    # This run's evidence only (past documents cannot confirm a claim about this run), as plain values and as the
+    # JSON text the model was shown: models often quote the JSON form ("errorType": "...", escaped quotes).
+    corpus = _normalize(_plain(evidence)) + "\n" + _normalize(evidence_text)
     verified = [q for q in result.supporting_evidence if len(_quote(q)) >= 4 and _quote(q) in corpus]
     unverified = [q for q in result.supporting_evidence if q not in verified]
     confidence = result.confidence if verified else min(result.confidence, 0.3)
