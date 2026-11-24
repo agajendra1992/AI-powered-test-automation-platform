@@ -3,6 +3,23 @@ name: Build report
 
 on:
   workflow_call:
+    inputs:
+      title:
+        description: Name used in notifications, e.g. "Nightly regression"
+        type: string
+        default: Test run
+    # All optional: without them notifications and the test-management export are skipped (dry run).
+    secrets:
+      SLACK_WEBHOOK_URL:
+        required: false
+      TEAMS_WEBHOOK_URL:
+        required: false
+      XRAY_CLIENT_ID:
+        required: false
+      XRAY_CLIENT_SECRET:
+        required: false
+      TESTRAIL_API_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -36,6 +53,12 @@ jobs:
           pattern: summary-*
           path: summaries
 
+      - name: Download Cucumber JSON
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: cucumber-json-*
+          path: cucumber-json
+
       - name: Combined summary
         run: python3 scripts/ci_summary.py summaries/*/execution-summary.json >> "$GITHUB_STEP_SUMMARY"
 
@@ -55,3 +78,34 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
           overwrite: true
+
+      # ---- Integrations (each is a no-op until its secrets/variables are set) ----------------
+      # Results are sent as produced: failures stay failures. A failed delivery warns but never fails the report.
+      - name: Export results to test management (Xray / TestRail)
+        if: always()
+        env:
+          XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+          XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+          XRAY_BASE_URL: ${{ vars.XRAY_BASE_URL }}
+          TESTRAIL_URL: ${{ vars.TESTRAIL_URL }}
+          TESTRAIL_USER: ${{ vars.TESTRAIL_USER }}
+          TESTRAIL_API_KEY: ${{ secrets.TESTRAIL_API_KEY }}
+          TESTRAIL_RUN_ID: ${{ vars.TESTRAIL_RUN_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          shopt -s nullglob
+          reports=(cucumber-json/*/*.json)
+          python3 scripts/testmgmt_export.py xray "${reports[@]}"
+          python3 scripts/testmgmt_export.py testrail "${reports[@]}"
+
+      - name: Notify Slack / Teams
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+          RUN_TITLE: ${{ inputs.title }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          GIT_REF: ${{ github.ref_name }}
+        run: |
+          shopt -s nullglob
+          python3 scripts/notify.py summaries/*/execution-summary.json

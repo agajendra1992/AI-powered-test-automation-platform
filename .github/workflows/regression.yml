@@ -74,3 +74,12 @@ jobs:
     needs: regression
     if: always() && needs.regression.result != 'skipped'
     uses: ./.github/workflows/report.yml
+    with:
+      title: Regression
+    # Only the integration secrets, not every repository secret.
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      TEAMS_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+      XRAY_CLIENT_ID: ${{ secrets.XRAY_CLIENT_ID }}
+      XRAY_CLIENT_SECRET: ${{ secrets.XRAY_CLIENT_SECRET }}
+      TESTRAIL_API_KEY: ${{ secrets.TESTRAIL_API_KEY }}

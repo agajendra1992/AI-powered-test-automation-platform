@@ -17,6 +17,14 @@ Playwright 1.65.0, demo app on `http://localhost:8000`.
 | 7 Production readiness | ✅ Done; platform verified in Docker; security and performance validation documented |
 | Update: LangChain + LangGraph (`ai-orchestration/`) | ✅ Done (phases 4b–7b, below); verified against the live MCP server, RAG service and Java framework **without a model** (rules path). The LLM path is tested with fake models and a stubbed Anthropic endpoint only, **not with a live model** |
 
+## Update: notifications and test-management export (2026-11-24)
+
+| Check | Result |
+|---|---|
+| `python3 -m unittest discover -s scripts/tests` | 14/14 (fake HTTP; no live Slack/Teams/Xray/TestRail account) |
+| Dry runs on the real regression output | expected payloads; 46 untagged scenarios listed |
+| actionlint 1.7.12 on all workflows | clean |
+
 ## Phase 1 verification log (actual results)
 
 | Run | Result |

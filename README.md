@@ -10,6 +10,7 @@ layers (MCP, LLM, RAG; later phases) can be added on top without the core ever d
 | Execution, suites, parallelism | TestNG 7 (`AbstractTestNGCucumberTests`, parallel DataProvider) |
 | Build | Maven, Java 21 |
 | Reporting | Allure (Cucumber adapter only, so no duplicates), Cucumber HTML/JSON, `execution-summary.json` |
+| Notifications, test management | Slack / Teams summary and Jira Xray / TestRail result export from the report job, off until secrets are set (`docs/INTEGRATIONS.md`) |
 | Quality gate | Checkstyle (bans JUnit, Selenium, Rest Assured, hard sleeps, empty catches), SpotBugs, Trivy (CI) |
 | CI / containers | GitHub Actions (PR smoke, sharded nightly regression, weekly cross-browser), Docker + Compose |
 | AI integration | MCP server (`mcp-server/`, Java MCP SDK): discovery, execution through the framework, reports, approvals; optional LLM layer (Anthropic SDK, OpenAI, Gemini, local/Ollama) |
