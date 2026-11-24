@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Discovery against the real framework sources. Expected counts are the ones the framework's own
- * runs report (regression 37, API 20, UI 15, E2E 2, smoke 4), so discovery and execution agree.
+ * runs report (regression 46, API 20, UI 24, E2E 2, smoke 5), so discovery and execution agree.
  */
 public class DiscoveryTest {
 
@@ -41,12 +41,12 @@ public class DiscoveryTest {
 
     @Test
     public void testCaseCountsMatchTheFrameworkSuites() {
-        assertThat(testCases("not @quarantine")).isEqualTo(37);
+        assertThat(testCases("not @quarantine")).isEqualTo(46);
         // Same expressions as ApiRunner / UiRunner (hybrid @e2e scenarios belong to the E2E suite)
         assertThat(testCases("@api and not @e2e and not @quarantine")).isEqualTo(20);
-        assertThat(testCases("@ui and not @e2e and not @quarantine")).isEqualTo(15);
+        assertThat(testCases("@ui and not @e2e and not @quarantine")).isEqualTo(24);
         assertThat(testCases("@e2e and not @quarantine")).isEqualTo(2);
-        assertThat(testCases("@smoke and not @quarantine")).isEqualTo(4);
+        assertThat(testCases("@smoke and not @quarantine")).isEqualTo(5);
     }
 
     @Test

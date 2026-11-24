@@ -302,6 +302,35 @@ def users_report(_: str = Depends(current_user)):
                              headers={"Content-Disposition": 'attachment; filename="users-report.csv"'})
 
 
+# ----------------------------------------------------------------------------- contract-test provider states
+# Pact provider verification asks the provider to set up named states before each interaction.
+# Off unless PACT_PROVIDER_STATES=1, so a normal run never exposes it.
+PACT_STATE_USER = {"id": "c0ffee000001", "name": "Contract User", "email": "contract.user@example.com", "job": "QA"}
+
+
+class ProviderState(BaseModel):
+    state: Optional[str] = None
+    action: Optional[str] = None
+    params: Optional[dict] = None
+
+
+if os.getenv("PACT_PROVIDER_STATES") == "1":
+    @app.post("/_pact/provider-states", include_in_schema=False)
+    def pact_provider_state(body: ProviderState):
+        uid = PACT_STATE_USER["id"]
+        if body.state == "a user with id c0ffee000001 exists":
+            if body.action == "teardown":
+                USERS.pop(uid, None)
+            else:
+                USERS[uid] = dict(PACT_STATE_USER, createdAt=now(), updatedAt=now())
+        elif body.state == "no user with id c0ffee000404 exists":
+            USERS.pop("c0ffee000404", None)
+        elif body.state == "no user with email new.user@example.com exists":
+            for key in [k for k, u in USERS.items() if u["email"].lower() == "new.user@example.com"]:
+                USERS.pop(key)
+        return {}
+
+
 # ----------------------------------------------------------------------------- UI
 from ui import PAGES  # noqa: E402  (keeps HTML out of the API module)
 

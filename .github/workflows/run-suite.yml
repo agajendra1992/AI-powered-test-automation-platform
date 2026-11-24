@@ -173,6 +173,7 @@ jobs:
           name: failure-evidence-${{ steps.meta.outputs.id }}
           path: |
             target/test-failures
+            target/visual
             target/artifacts
             target/logs
             target/cucumber-reports

@@ -1,4 +1,4 @@
-# Pull requests and main: quality gate + unit tests, then the smoke suite.
+# Pull requests and main: quality gate + unit tests, then smoke, contract and performance-smoke checks.
 name: CI
 
 on:
@@ -63,6 +63,96 @@ jobs:
       browser: chromium
       environment: local
     secrets: inherit
+
+  contract:
+    name: Contract tests (Pact consumer + provider verification)
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Python for the demo app
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: sut/requirements.txt
+
+      # PACT_PROVIDER_STATES=1 turns on the provider-state hook used only by contract verification.
+      - name: Start the demo app (provider)
+        env:
+          PACT_PROVIDER_STATES: '1'
+        run: |
+          pip install -q -r sut/requirements.txt
+          mkdir -p target
+          nohup python -m uvicorn app:app --app-dir sut --port 8000 --log-level warning > target/sut.log 2>&1 &
+          curl -fsS --retry 30 --retry-delay 1 --retry-all-errors http://localhost:8000/api/health
+
+      - name: Consumer pact and provider verification
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: mvn -B -ntp test -DsuiteXmlFile=testng-contract.xml -Dprovider.version="${GITHUB_SHA}"
+
+      - name: Upload pact
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pacts
+          path: |
+            target/pacts
+            target/surefire-reports
+            target/sut.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+  performance-smoke:
+    name: Performance smoke (k6, 30 s, thresholds)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Python for the demo app
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: sut/requirements.txt
+
+      - name: Start the demo app
+        run: |
+          pip install -q -r sut/requirements.txt
+          mkdir -p target/perf
+          nohup python -m uvicorn app:app --app-dir sut --port 8000 --log-level warning > target/sut.log 2>&1 &
+          curl -fsS --retry 30 --retry-delay 1 --retry-all-errors http://localhost:8000/api/health
+
+      # k6 exits non-zero when a threshold (error rate, p95/p99 latency, checks) is crossed.
+      - name: k6 smoke profile
+        run: |
+          docker run --rm --network host -u "$(id -u):$(id -g)" -v "$PWD:/work" -w /work \
+            -e PROFILE=smoke -e BASE_URL=http://localhost:8000 grafana/k6:2.3.0 run --quiet perf/k6/api-load.js
+
+      - name: Upload k6 summary
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: k6-smoke-summary
+          path: |
+            target/perf
+            target/sut.log
+          if-no-files-found: ignore
+          retention-days: 14
 
   mcp-server:
     name: MCP server (unit, HTTP and stdio end-to-end)
