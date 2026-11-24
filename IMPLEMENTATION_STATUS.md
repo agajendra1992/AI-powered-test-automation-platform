@@ -17,6 +17,14 @@ Playwright 1.65.0, demo app on `http://localhost:8000`.
 | 7 Production readiness | ✅ Done; platform verified in Docker; security and performance validation documented |
 | Update: LangChain + LangGraph (`ai-orchestration/`) | ✅ Done (phases 4b–7b, below); verified against the live MCP server, RAG service and Java framework **without a model** (rules path). The LLM path is tested with fake models and a stubbed Anthropic endpoint only, **not with a live model** |
 
+## Update: contract and performance testing (2026-11-24)
+
+| Check | Result |
+|---|---|
+| `testng-contract.xml` (Pact consumer + provider) | 2/2, repeatable; a removed `job` field fails verification (docs/CONTRACT_TESTING.md) |
+| k6 smoke profile (Docker, grafana/k6:2.3.0) | all thresholds pass; a broken request fails the error-rate threshold (docs/PERFORMANCE.md) |
+| actionlint 1.7.12 on `ci.yml`, `performance.yml` | clean |
+
 ## Phase 1 verification log (actual results)
 
 | Run | Result |
