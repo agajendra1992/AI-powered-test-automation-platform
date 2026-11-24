@@ -37,7 +37,7 @@ def test_json_fallback_path_with_repair_round(tmp_path):
     llm = StructuredLLM(model, usage(tmp_path), "fake")
     result, meta = llm.invoke("intent", VALUES, IntentResult)
     assert result.tag_expression == "@payment and @regression" and result.environment == "qa"
-    assert meta["prompt"] == "intent v2"
+    assert meta["prompt"] == "intent v3"
 
 
 def test_invalid_output_after_repair_is_an_llm_failure(tmp_path):

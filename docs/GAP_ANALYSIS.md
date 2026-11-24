@@ -23,6 +23,7 @@ table records how each is closed and in which phase, so nothing is silently drop
 | LLM abstraction, prompts, token tracking | Missing (draft code parked) | `ai-engine` | 4 |
 | RAG service (FastAPI + ChromaDB) | Missing | `rag-service/` | 5 |
 | Impact-based selection, flaky analytics | Missing | `test-orchestration` | 6 |
+| Formal evaluation of AI output quality | Missing (found 2026-11-24 review) | `ai-orchestration/evals`, `ai-eval.yml` | update |
 
 ## Risks
 
