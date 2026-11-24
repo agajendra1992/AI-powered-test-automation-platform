@@ -110,7 +110,8 @@ public final class BrowserSession {
                 attachDiagnostics();
             }
             stopTracing(safe, failed);
-            com.microsoft.playwright.Video recording = page.video();
+            // Only ask for the video when recording is on: otherwise Playwright reports "Video recording has not been started".
+            com.microsoft.playwright.Video recording = ConfigManager.get().recordVideo() ? page.video() : null;
             Path video = recording != null ? recording.path() : null;
             context.close();
             if (video != null && (failed || ConfigManager.get().getBool("video.keep.on.pass", false))) {

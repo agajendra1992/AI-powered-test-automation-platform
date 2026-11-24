@@ -63,7 +63,7 @@ public class PlanningAndAdviceTest {
         assertThat(plan.get("selection")).asString().contains("@payment", "@regression");
         assertThat(plan).containsEntry("environment", "qa").containsEntry("browser", "chromium");
         assertThat(plan.get("testCases")).isEqualTo(10);
-        assertThat(plan.get("notIncluded")).asString().contains("27 regression test cases are NOT in this plan", "run_regression_tests");
+        assertThat(plan.get("notIncluded")).asString().contains("36 regression test cases are NOT in this plan", "run_regression_tests");
         assertThat(plan.get("interpretationNote")).asString().contains("AI not configured");
     }
 
@@ -71,7 +71,7 @@ public class PlanningAndAdviceTest {
     public void rulesHandleFullRegressionNamedScenariosProductionAndVagueness() throws Exception {
         Fixture f = fixture(disabled(), List.of("true"));
         assertThat(f.planner().plan(ALICE, "run the full regression on staging in safari", false))
-                .containsEntry("environment", "staging").containsEntry("browser", "webkit").containsEntry("testCases", 37)
+                .containsEntry("environment", "staging").containsEntry("browser", "webkit").containsEntry("testCases", 46)
                 .extractingByKey("approvalRequired").asString().startsWith("yes");
         assertThat(f.planner().plan(ALICE, "please run \"Create a new user\" in firefox", false).get("selection"))
                 .asString().contains("Create a new user");

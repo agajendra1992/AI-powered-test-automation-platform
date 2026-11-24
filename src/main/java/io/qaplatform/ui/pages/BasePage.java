@@ -8,6 +8,7 @@ import io.qaplatform.ui.browser.PlaywrightFactory;
 import io.qaplatform.ui.components.HeaderComponent;
 
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Minimal shared behaviour for page objects. Pages expose business actions and state
@@ -35,6 +36,11 @@ public abstract class BasePage {
 
     public Locator heading() {
         return page.getByRole(AriaRole.HEADING, new Page.GetByRoleOptions().setLevel(1));
+    }
+
+    /** Regions whose content changes between runs (counts, dates); masked in visual checks. None by default. */
+    public List<Locator> dynamicRegions() {
+        return List.of();
     }
 
     protected Locator button(String name) {

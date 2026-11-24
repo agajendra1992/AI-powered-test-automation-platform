@@ -11,6 +11,7 @@ layers (MCP, LLM, RAG; later phases) can be added on top without the core ever d
 | Build | Maven, Java 21 |
 | Reporting | Allure (Cucumber adapter only, so no duplicates), Cucumber HTML/JSON, `execution-summary.json` |
 | Contract and performance tests | Pact consumer contract + provider verification (`docs/CONTRACT_TESTING.md`); k6 API load tests with thresholds (`docs/PERFORMANCE.md`) |
+| Accessibility and visual checks | axe-core WCAG 2.1 AA scans (`docs/ACCESSIBILITY.md`); screenshot comparison against approved baselines (`docs/VISUAL_TESTING.md`) |
 | Quality gate | Checkstyle (bans JUnit, Selenium, Rest Assured, hard sleeps, empty catches), SpotBugs, Trivy (CI) |
 | CI / containers | GitHub Actions (PR smoke, sharded nightly regression, weekly cross-browser), Docker + Compose |
 | AI integration | MCP server (`mcp-server/`, Java MCP SDK): discovery, execution through the framework, reports, approvals; optional LLM layer (Anthropic SDK, OpenAI, Gemini, local/Ollama) |
@@ -84,7 +85,7 @@ want to select from every non-quarantined scenario.
 ### Standard tags
 
 `@smoke @regression @sanity @critical` (scope) · `@ui @api @e2e` (layer) ·
-`@login @payment @user` (domain) · `@positive @negative` (intent) ·
+`@login @payment @user` (domain) · `@accessibility @visual` (non-functional) · `@positive @negative` (intent) ·
 `@quarantine` (excluded by every runner, never retried) · `@noretry`.
 
 ## Docker
