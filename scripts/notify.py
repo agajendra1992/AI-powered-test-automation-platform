@@ -138,7 +138,8 @@ def main(argv: list[str] | None = None, env: dict | None = None, opener=urllib.r
     parser.add_argument("summaries", nargs="*", help="execution-summary.json files")
     parser.add_argument("--dry-run", action="store_true", help="print the payloads instead of sending them")
     parser.add_argument("--only-on-failure", action="store_true", help="send nothing when every scenario passed")
-    args = parser.parse_args(argv)
+    # Intermixed: options may come between positionals ("testrail --strict a.json") on every Python version.
+    args = parser.parse_intermixed_args(argv)
     env = os.environ if env is None else env
 
     summary = aggregate(args.summaries)

@@ -190,7 +190,8 @@ def main(argv: list[str] | None = None, env: dict | None = None, opener=urllib.r
     parser.add_argument("reports", nargs="*", help="Cucumber JSON report files")
     parser.add_argument("--dry-run", action="store_true", help="show what would be sent; send nothing")
     parser.add_argument("--strict", action="store_true", help="exit 1 when sending fails (default: warn only)")
-    args = parser.parse_args(argv)
+    # Intermixed: options may come between positionals ("testrail --strict a.json") on every Python version.
+    args = parser.parse_intermixed_args(argv)
     env = os.environ if env is None else env
 
     features = load_features(args.reports)
