@@ -34,6 +34,9 @@ jobs:
         run: python3 scripts/check_versions.py
 
       # validate (Checkstyle) -> compile -> test-compile -> framework unit tests
+      - name: Script tests (notifications, test-management export)
+        run: python3 -m unittest discover -s scripts/tests -v
+
       - name: Build and unit tests
         run: mvn -B -ntp test -DsuiteXmlFile=testng-unit.xml
 

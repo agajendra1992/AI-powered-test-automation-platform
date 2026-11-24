@@ -10,6 +10,7 @@ layers (MCP, LLM, RAG; later phases) can be added on top without the core ever d
 | Execution, suites, parallelism | TestNG 7 (`AbstractTestNGCucumberTests`, parallel DataProvider) |
 | Build | Maven, Java 21 |
 | Reporting | Allure (Cucumber adapter only, so no duplicates), Cucumber HTML/JSON, `execution-summary.json` |
+| Notifications, test management | Slack / Teams summary and Jira Xray / TestRail result export from the report job, off until secrets are set (`docs/INTEGRATIONS.md`) |
 | Contract and performance tests | Pact consumer contract + provider verification (`docs/CONTRACT_TESTING.md`); k6 API load tests with thresholds (`docs/PERFORMANCE.md`) |
 | Accessibility and visual checks | axe-core WCAG 2.1 AA scans (`docs/ACCESSIBILITY.md`); screenshot comparison against approved baselines (`docs/VISUAL_TESTING.md`) |
 | Quality gate | Checkstyle (bans JUnit, Selenium, Rest Assured, hard sleeps, empty catches), SpotBugs, Trivy (CI) |

@@ -23,6 +23,7 @@ table records how each is closed and in which phase, so nothing is silently drop
 | LLM abstraction, prompts, token tracking | Missing (draft code parked) | `ai-engine` | 4 |
 | RAG service (FastAPI + ChromaDB) | Missing | `rag-service/` | 5 |
 | Impact-based selection, flaky analytics | Missing | `test-orchestration` | 6 |
+| Notifications, test-management sync | Missing (found 2026-11-24 review) | `scripts/notify.py`, `scripts/testmgmt_export.py`, report job | update |
 | Contract testing | Missing (found 2026-11-24 review) | Pact consumer + provider verification, `testng-contract.xml` | update |
 | Performance / load testing | Missing (found 2026-11-24 review) | k6 `perf/k6/api-load.js`, `performance.yml`, CI smoke | update |
 | Accessibility scans (WCAG 2.1 AA) | Missing (found 2026-11-24 review) | `io.qaplatform.ui.a11y` (axe-core), `features/accessibility` | update |
