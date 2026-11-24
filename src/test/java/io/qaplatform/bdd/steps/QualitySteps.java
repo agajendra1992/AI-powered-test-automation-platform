@@ -23,7 +23,8 @@ public class QualitySteps {
         this.context = context;
     }
 
-    @When("^the user opens the (" + AppPages.NAMES + ") page$")
+    // Literal pattern (keep in sync with AppPages): the MCP server reads step patterns from source text.
+    @When("^the user opens the (login|dashboard|user management|payment|files) page$")
     public void opensPage(String name) {
         context.put(Keys.CURRENT_PAGE, AppPages.open(context.page(), name));
     }

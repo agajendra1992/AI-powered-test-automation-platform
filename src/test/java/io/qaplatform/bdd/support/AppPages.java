@@ -11,9 +11,6 @@ import io.qaplatform.ui.pages.UserManagementPage;
 /** Maps the page names used in feature files to page objects. */
 public final class AppPages {
 
-    /** Cucumber regex alternatives for the names below. */
-    public static final String NAMES = "login|dashboard|user management|payment|files";
-
     private AppPages() {
     }
 
