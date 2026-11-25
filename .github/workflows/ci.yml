@@ -34,7 +34,7 @@ jobs:
         run: python3 scripts/check_versions.py
 
       # validate (Checkstyle) -> compile -> test-compile -> framework unit tests
-      - name: Script tests (notifications, test-management export)
+      - name: Script tests (notifications, test-management export, execution history)
         run: python3 -m unittest discover -s scripts/tests -v
 
       - name: Build and unit tests

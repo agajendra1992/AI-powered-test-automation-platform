@@ -9,6 +9,7 @@ __pycache__/
 .DS_Store
 .env
 .qa-mcp/
+.qa-history/
 mcp-tokens*.json
 rag/.venv/
 .rag-data/

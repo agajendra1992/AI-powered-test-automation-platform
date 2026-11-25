@@ -2,6 +2,7 @@ package io.qaplatform.core.listeners;
 
 import io.qaplatform.core.config.ConfigManager;
 import io.qaplatform.core.reporting.ApiMetrics;
+import io.qaplatform.core.reporting.ExecutionHistory;
 import io.qaplatform.core.reporting.Json;
 import io.qaplatform.core.reporting.Redactor;
 import org.slf4j.Logger;
@@ -18,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -30,7 +32,8 @@ import java.util.stream.Collectors;
 /**
  * Observes execution and never influences it. Produces the machine-readable outputs other
  * layers consume: failure records ({@code target/test-failures/*.json}), the execution summary
- * ({@code target/execution-summary.json}) and Allure environment info.
+ * ({@code target/execution-summary.json}), a copy of it in the execution history
+ * ({@code history.dir}, see {@link ExecutionHistory}) and Allure environment info.
  */
 public class ExecutionListener implements ITestListener, ISuiteListener {
 
@@ -47,6 +50,9 @@ public class ExecutionListener implements ITestListener, ISuiteListener {
     private final Set<String> retriedIds = ConcurrentHashMap.newKeySet();
     private final Set<String> flakyIds = ConcurrentHashMap.newKeySet();
     private final Map<String, AtomicInteger> failuresByType = new ConcurrentHashMap<>();
+    /** Final outcome per scenario id; a retried scenario's later attempt replaces the earlier one. */
+    private final Map<String, ScenarioOutcome> outcomes = new ConcurrentHashMap<>();
+    private final Set<String> retriedExamples = ConcurrentHashMap.newKeySet();
     private volatile Instant suiteStart;
 
     @Override
@@ -63,6 +69,7 @@ public class ExecutionListener implements ITestListener, ISuiteListener {
         if (retriedIds.contains(id)) {
             flakyIds.add(id);
         }
+        recordOutcome(result, retriedExamples.contains(ScenarioIds.exampleId(result)) ? "flaky" : "passed");
     }
 
     @Override
@@ -70,9 +77,11 @@ public class ExecutionListener implements ITestListener, ISuiteListener {
         if (result.wasRetried()) {
             retriedAttempts.incrementAndGet();
             retriedIds.add(ScenarioIds.id(result));
+            retriedExamples.add(ScenarioIds.exampleId(result));
             writeFailure(result); // the failed attempt stays visible
         } else {
             skipped.incrementAndGet();
+            recordOutcome(result, "skipped");
         }
     }
 
@@ -81,6 +90,7 @@ public class ExecutionListener implements ITestListener, ISuiteListener {
         failed.incrementAndGet();
         addDuration(result);
         writeFailure(result);
+        recordOutcome(result, "failed");
     }
 
     @Override
@@ -108,10 +118,29 @@ public class ExecutionListener implements ITestListener, ISuiteListener {
         summary.put("apiTimings", ApiMetrics.snapshot());
         summary.put("buildNumber", env("GITHUB_RUN_NUMBER"));
         summary.put("commit", env("GITHUB_SHA"));
-        summary.put("finishedAt", Instant.now().toString());
-        write(SUMMARY, Json.write(summary));
+        String finishedAt = Instant.now().toString();
+        summary.put("finishedAt", finishedAt);
+        summary.put("scenarios", outcomes.values().stream()
+                .sorted(Comparator.comparing(ScenarioOutcome::id)).toList());
+        String json = Json.write(summary);
+        write(SUMMARY, json);
+        if (ConfigManager.get().getBool("history.enabled", true)) {
+            ExecutionHistory.record(Path.of(ConfigManager.get().get("history.dir", ".qa-history")),
+                    finishedAt, suite.getName(), json, ConfigManager.get().getInt("history.keep.days", 400));
+        }
         LOG.info("Execution summary: total={} passed={} failed={} skipped={} flaky={} duration={}ms",
                 summary.get("total"), passed.get(), failed.get(), skipped.get(), flakyIds.size(), summary.get("durationMs"));
+    }
+
+    private void recordOutcome(ITestResult result, String status) {
+        // Per example row, so every Scenario Outline example is counted on its own.
+        String id = ScenarioIds.exampleId(result);
+        outcomes.put(id, new ScenarioOutcome(id, ScenarioIds.name(result), status,
+                result.getEndMillis() - result.getStartMillis()));
+    }
+
+    /** One scenario's final result in the summary; {@code flaky} means it passed only on a retry. */
+    public record ScenarioOutcome(String id, String name, String status, long durationMs) {
     }
 
     private void addDuration(ITestResult result) {
