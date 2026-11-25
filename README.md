@@ -9,7 +9,7 @@ layers (MCP, LLM, RAG; later phases) can be added on top without the core ever d
 | Business-readable scenarios | Cucumber JVM 8 (feature files, steps, hooks, PicoContainer DI) |
 | Execution, suites, parallelism | TestNG 7 (`AbstractTestNGCucumberTests`, parallel DataProvider) |
 | Build | Maven, Java 21 |
-| Reporting | Allure (Cucumber adapter only, so no duplicates), Cucumber HTML/JSON, `execution-summary.json` |
+| Reporting | Allure (Cucumber adapter only, so no duplicates), Cucumber HTML/JSON, `execution-summary.json`, execution history (last 1/3/7/10/30 days, weekly, monthly; `docs/EXECUTION_HISTORY.md`) |
 | Notifications, test management | Slack / Teams summary and Jira Xray / TestRail result export from the report job, off until secrets are set (`docs/INTEGRATIONS.md`) |
 | Contract and performance tests | Pact consumer contract + provider verification (`docs/CONTRACT_TESTING.md`); k6 API load tests with thresholds (`docs/PERFORMANCE.md`) |
 | Accessibility and visual checks | axe-core WCAG 2.1 AA scans (`docs/ACCESSIBILITY.md`); screenshot comparison against approved baselines (`docs/VISUAL_TESTING.md`) |
@@ -33,6 +33,7 @@ Status per phase and acceptance criterion: [IMPLEMENTATION_STATUS.md](IMPLEMENTA
 | RAG ingestion | [docs/RAG.md](docs/RAG.md) |
 | LangChain + LangGraph workflow (`/ai/*` API) | [docs/AI_ORCHESTRATION.md](docs/AI_ORCHESTRATION.md) |
 | Intelligent QA (selection, flaky, maintenance) | [docs/INTELLIGENT_QA.md](docs/INTELLIGENT_QA.md) |
+| Execution history report (daily, weekly, monthly totals) | [docs/EXECUTION_HISTORY.md](docs/EXECUTION_HISTORY.md) |
 | Operations | [docs/RUNBOOKS.md](docs/RUNBOOKS.md), monitoring in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) |
 | Security and performance validation | [docs/SECURITY_VALIDATION.md](docs/SECURITY_VALIDATION.md), [docs/PERFORMANCE.md](docs/PERFORMANCE.md) |
 | Upgrades, code review | [docs/UPGRADING.md](docs/UPGRADING.md), [CODE_REVIEW_CHECKLIST.md](CODE_REVIEW_CHECKLIST.md) |
@@ -55,7 +56,7 @@ mvn clean test
 ```
 
 ```bash
-# 3. Build and open the Allure report
+# 3. Build the Allure report and the execution history report (target/execution-history/index.html)
 scripts/allure-report.sh
 ```
 
@@ -139,7 +140,8 @@ Manual runs (**Actions → Regression → Run workflow**) take browser, environm
 tag expression and retries. Every job writes a results table to the run's summary page and
 uploads `allure-results-*` and `summary-*`; failed jobs also upload `failure-evidence-*`
 (screenshots, traces, logs, failure records; kept 7 days). The report job publishes
-`allure-report`.
+`allure-report` and `execution-history` (tests executed, passed and failed per day, week and month
+across runs; [docs/EXECUTION_HISTORY.md](docs/EXECUTION_HISTORY.md)).
 
 Schedules use the `Asia/Kolkata` time zone (`timezone:` next to each `cron:` line).
 
@@ -217,7 +219,7 @@ config/checkstyle.xml           quality gate
 Dockerfile, docker-compose.yml  test-runner image; demo app + runner for local/CI parity
 .github/workflows/              ci, regression, cross-browser, docker, run-suite (reusable), report (reusable)
 sut/                            demo application under test (FastAPI) + its Dockerfile
-scripts/                        allure-report.sh, ci_summary.py, check_versions.py
+scripts/                        allure-report.sh, ci_summary.py, execution_history.py, check_versions.py
 mcp-server/                     MCP server + AI layer (separate Maven project; the framework never depends on it)
 rag/                            RAG service (Python FastAPI + ChromaDB), tests and retrieval gold set
 ai-orchestration/               optional LangChain + LangGraph workflow service (/ai/* API); calls MCP and RAG over HTTP

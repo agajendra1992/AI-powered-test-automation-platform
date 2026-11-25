@@ -28,6 +28,15 @@ public final class ScenarioIds {
         return result.getTestClass().getRealClass().getName() + "#" + result.getMethod().getMethodName();
     }
 
+    /**
+     * Like {@link #id(ITestResult)}, but each Scenario Outline example gets its own id: the line of its
+     * Examples row instead of the outline's line. Used where every example must count on its own.
+     */
+    public static String exampleId(ITestResult result) {
+        PickleWrapper p = pickle(result);
+        return p != null ? id(p.getPickle().getUri(), p.getPickle().getLine()) : id(result);
+    }
+
     /** Project-relative {@code path/to.feature:line}, identical on every machine and CI shard. */
     public static String id(URI featureUri, int line) {
         String path = featureUri.toString();
