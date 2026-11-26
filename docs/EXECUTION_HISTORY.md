@@ -51,8 +51,8 @@ in the **history folder**, outside `target/`, so `mvn clean` does not erase it:
 | `history.keep.days` | `400` | Older runs are removed when a new run is recorded (12 monthly totals need ~13 months) |
 
 Set them like any other setting: `-Dhistory.enabled=false`, `HISTORY_DIR=/shared/qa-history`, or in
-`config/<env>.properties`. The report's days, weeks and months use this machine's time zone unless
-`--tz` (or `HISTORY_TZ`) names one.
+`config/<env>.properties`. The report's days, weeks and months use this machine's time zone (`TZ`, or the system setting,
+with its daylight-saving rules) unless `--tz` (or `HISTORY_TZ`) names one.
 
 A run in Docker (`docker compose run --rm tests …`) writes the history inside the container. Mount
 a folder on `/work/.qa-history` (or set `HISTORY_DIR` to a mounted path) to keep it.
@@ -66,8 +66,11 @@ The report job of `regression.yml` and `cross-browser.yml` (in `report.yml`):
    (`execution_history.py record`, labelled e.g. *Regression #41*, linked to the run),
 3. builds the Allure report (with its Trend charts) and the history report,
 4. writes the period, weekly and monthly tables to the run's summary page,
-5. uploads the artifact **`execution-history`** (the report plus the raw runs, kept 90 days), and
-6. saves the history to the cache for the next run.
+5. uploads the artifact **`execution-history`** (the report plus the raw runs, kept 90 days),
+6. restores the newest cached history again on top of its own, so runs that an overlapping run of
+   the same workflow saved meanwhile (for example a manual `qa` run during the nightly `local` one)
+   are kept, then removes runs past the retention again, and
+7. saves the history to the cache for the next run.
 
 Regression and cross-browser runs keep separate histories. Days follow `Asia/Kolkata`, like the
 schedules; set the repository variable `HISTORY_TZ` to change it.
@@ -84,5 +87,6 @@ history. To restart a history from an `execution-history` artifact, unpack its `
 | `execution_history.py report [--history DIR] [--out FILE] [--tz ZONE] [--title TEXT]` | Writes the HTML report (default `target/execution-history/index.html`) |
 | `execution_history.py table [--history DIR] [--tz ZONE]` | Prints the periods, last 4 weeks and last 3 months as Markdown |
 | `execution_history.py record SUMMARY... [--label TEXT] [--run-url URL] [--keep-days N]` | Merges one run's summaries into the history (CI); recording the same run again replaces it |
+| `execution_history.py prune [--history DIR] [--keep-days N]` | Removes runs older than N days (400) |
 
 Tests: `python3 -m unittest discover -s scripts/tests -v` and `ExecutionHistoryTest` in the unit suite.

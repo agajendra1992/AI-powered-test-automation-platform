@@ -69,8 +69,10 @@ jobs:
 
       # ---- Execution history -----------------------------------------------------------------
       # The history (earlier runs + Allure trend data) lives in the Actions cache, one chain per
-      # workflow: each run restores the newest copy and saves a new one. Unused caches expire after
-      # 7 days, so a workflow that pauses longer starts a new history; the artifact below keeps a copy.
+      # workflow: each run restores the newest copy and saves a new one. Just before saving, the
+      # newest copy is restored again on top, so runs recorded by an overlapping run of the same
+      # workflow (another environment) are kept too. Unused caches expire after 7 days, so a
+      # workflow that pauses longer starts a new history; the artifact below keeps a copy.
       - name: Restore execution history
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -125,6 +127,33 @@ jobs:
           if-no-files-found: ignore
           retention-days: 90
           overwrite: true
+
+      # Run files have unique names, so extracting the newest cache over ours adds the runs an
+      # overlapping job saved meanwhile. Our own Allure trend data is kept, not theirs.
+      - name: Keep our Allure trend data
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/allure-history"
+          if [[ -d .qa-history/allure-history ]]; then cp -R .qa-history/allure-history "$RUNNER_TEMP/allure-history"; fi
+
+      - name: Pick up runs recorded meanwhile
+        if: always()
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .qa-history
+          key: execution-history-${{ github.workflow }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: execution-history-${{ github.workflow }}-
+
+      # The restore also brings back runs that `record` removed for age: remove them again.
+      - name: Put our Allure trend data back
+        if: always()
+        run: |
+          if [[ -d "$RUNNER_TEMP/allure-history" ]]; then
+            rm -rf .qa-history/allure-history
+            cp -R "$RUNNER_TEMP/allure-history" .qa-history/allure-history
+          fi
+          python3 scripts/execution_history.py prune
+          ls .qa-history/runs 2>/dev/null | wc -l | xargs echo "Runs in the history:"
 
       - name: Save execution history
         if: always()

@@ -15,6 +15,7 @@ Standard library only. The summaries hold counts, scenario names and ids, never 
     python3 scripts/execution_history.py report --tz Asia/Kolkata --out reports/history.html
     python3 scripts/execution_history.py table >> "$GITHUB_STEP_SUMMARY"   # Markdown, for CI
     python3 scripts/execution_history.py record summaries/*/execution-summary.json --label "Regression #41"
+    python3 scripts/execution_history.py prune --keep-days 400
 
 `record` is for CI, where shards (or browsers) of one run each write a summary: it merges them into
 one run in the history. Local runs are recorded by the framework itself (ExecutionListener).
@@ -113,12 +114,30 @@ def load_runs(history_dir):
     return runs
 
 
+def machine_zone_name():
+    """This machine's IANA zone (TZ, or the /etc/localtime link), or None."""
+    name = os.environ.get("TZ", "").lstrip(":")
+    if name:
+        return name
+    try:
+        target = os.path.realpath("/etc/localtime")
+    except OSError:
+        return None
+    marker = "zoneinfo" + os.sep
+    return target.split(marker, 1)[1] if marker in target else None
+
+
 def resolve_tz(name):
-    if name and ZoneInfo is not None:
-        try:
-            return ZoneInfo(name)
-        except Exception:  # noqa: BLE001 - unknown zone names raise several error types
-            print(f"Unknown time zone {name!r}; using this machine's.", file=sys.stderr)
+    """A real zone (with daylight saving rules), not today's fixed offset, so past runs land on the right day."""
+    if ZoneInfo is not None:
+        for candidate, given in ((name, True), (machine_zone_name(), False)):
+            if not candidate:
+                continue
+            try:
+                return ZoneInfo(candidate)
+            except Exception:  # noqa: BLE001 - unknown zone names raise several error types
+                if given:
+                    print(f"Unknown time zone {candidate!r}; using this machine's.", file=sys.stderr)
     return datetime.now().astimezone().tzinfo
 
 
@@ -546,7 +565,7 @@ def render_html(runs, tz, today, generated, title):
         tags = f'<div class="muted small">{esc(run["tagFilter"])}</div>' if run["tagFilter"] else ""
         rate = pct(run["passed"] / run["total"]) if run["total"] else "–"
         failed = f'<span class="bad-text">{run["failed"]}</span>' if run["failed"] else "0"
-        run_rows.append(f'<tr><th scope="row">{when}</th><td>{name}{tags}</td><td>{esc(run["environment"])}</td>'
+        run_rows.append(f'<tr><th scope="row">{when}</th><td class="name">{name}{tags}</td><td>{esc(run["environment"])}</td>'
                         f'<td>{esc(run["browser"])}</td><td>{run["total"]}</td><td>{run["passed"]}</td>'
                         f'<td>{failed}</td><td>{run["skipped"]}</td><td>{run["flaky"]}</td><td>{rate}</td>'
                         f'<td>{dur(run["durationMs"])}</td></tr>')
@@ -596,7 +615,7 @@ section {{ background: var(--surface); border: 1px solid var(--border); border-r
 table {{ width: 100%; border-collapse: collapse; margin-top: 12px; font-variant-numeric: tabular-nums; }}
 th, td {{ padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: right; vertical-align: top; }}
 thead th {{ color: var(--ink-2); font-weight: 600; font-size: 12px; border-bottom-color: var(--axis); }}
-th:first-child, td:nth-child(2):not(:last-child) {{ text-align: left; }}
+th:first-child, td.name {{ text-align: left; }}
 tbody th {{ font-weight: 500; }}
 .bad-text {{ color: var(--bad-text); font-weight: 600; }}
 .tabs {{ display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 4px; }}
@@ -676,7 +695,16 @@ def main(argv=None):
     rec.add_argument("--run-url", default="")
     rec.add_argument("--keep-days", type=int, default=KEEP_DAYS)
 
+    prn = sub.add_parser("prune", help="remove runs older than --keep-days")
+    prn.add_argument("--history", default=os.environ.get("HISTORY_DIR", DEFAULT_HISTORY))
+    prn.add_argument("--keep-days", type=int, default=KEEP_DAYS)
+
     args = parser.parse_args(argv)
+    if args.command == "prune":
+        runs_dir = Path(args.history) / "runs"
+        if runs_dir.is_dir():
+            prune(runs_dir, args.keep_days, datetime.now(timezone.utc).date())
+        return 0
     if args.command == "record":
         path = record(args.summaries, args.history, args.label, args.run_url, args.keep_days)
         if path:
