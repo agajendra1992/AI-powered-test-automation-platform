@@ -70,13 +70,19 @@ public final class ReportReader {
 
     // ------------------------------------------------------------------ summary and failures
 
+    /**
+     * The run's summary without its per-scenario list ({@code scenarios}, kept for the execution
+     * history report): it grows with the suite, and failures come from {@link #failures}.
+     */
     public Map<String, Object> summary(Source source) {
         Path file = source.dir().resolve("execution-summary.json");
         if (!Files.isRegularFile(file)) {
             throw ToolException.notFound("No execution summary for " + source.selector()
                     + (source.execution() == null ? "" : " (status " + source.execution().status() + ")"));
         }
-        return readMap(file);
+        Map<String, Object> summary = readMap(file);
+        summary.remove("scenarios");
+        return summary;
     }
 
     public List<Map<String, Object>> failures(Source source) {

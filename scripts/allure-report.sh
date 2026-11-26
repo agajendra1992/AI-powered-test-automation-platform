@@ -14,8 +14,10 @@ if [[ -z "${cli}" ]]; then
   mvn -q -B allure:report >/dev/null   # downloads the pinned CLI into .allure/
   cli=$(find .allure -path "*/bin/allure" | head -1)
 fi
-if [[ -d "${history_dir}/allure-history" && ! -d target/allure-results/history ]]; then
+# Always replace: results left by a run without `mvn clean` may hold an older copy.
+if [[ -d "${history_dir}/allure-history" ]]; then
   mkdir -p target/allure-results
+  rm -rf target/allure-results/history
   cp -R "${history_dir}/allure-history" target/allure-results/history
 fi
 "${cli}" generate target/allure-results -o target/allure-report --clean
@@ -25,8 +27,10 @@ if [[ -d target/allure-report/history ]]; then
   cp -R target/allure-report/history "${history_dir}/allure-history"
 fi
 echo "Open with: ${cli} open target/allure-report"
+# Best effort: the Allure report above is already built, and a problem here must not fail it.
 if command -v python3 >/dev/null 2>&1; then
-  python3 scripts/execution_history.py report --history "${history_dir}"
+  python3 scripts/execution_history.py report --history "${history_dir}" \
+    || echo "Could not build the execution history report (scripts/execution_history.py)." >&2
 else
   echo "python3 not found: skipped the execution history report (scripts/execution_history.py)." >&2
 fi

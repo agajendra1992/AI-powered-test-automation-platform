@@ -2,12 +2,16 @@
 
     python3 -m unittest discover -s scripts/tests -v
 """
+import io
 import json
+import os
 import sys
 import tempfile
 import unittest
-from datetime import date, datetime, timezone
+from contextlib import redirect_stderr
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -86,6 +90,18 @@ class MergeAndRecordTest(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in Path(tmp).iterdir()),
                              ["20251026T000000Z-a.json", "20261125T000000Z-a.json", "x.json"])
 
+    def test_prune_command_removes_old_runs_from_the_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runs = Path(tmp) / "runs"
+            runs.mkdir()
+            today = datetime.now(timezone.utc)
+            old = runs / eh.file_name((today - timedelta(days=500)).strftime("%Y-%m-%dT%H:%M:%SZ"), "Regression")
+            new = runs / eh.file_name(today.strftime("%Y-%m-%dT%H:%M:%SZ"), "Regression")
+            old.write_text("{}")
+            new.write_text("{}")
+            self.assertEqual(eh.main(["prune", "--history", tmp, "--keep-days", "400"]), 0)
+            self.assertEqual([p.name for p in runs.iterdir()], [new.name])
+
     def test_file_names_match_the_framework(self):
         # Same rule as ExecutionHistory.fileName (ExecutionHistoryTest checks the Java side).
         self.assertEqual(eh.file_name("2026-11-25T02:04:47.408Z", "Framework Regression"),
@@ -157,6 +173,28 @@ class AggregationTest(unittest.TestCase):
         self.assertEqual(problems[0]["trail"], ["failed", "failed", "passed"])
 
 
+class TimeZoneTest(unittest.TestCase):
+
+    @unittest.skipIf(KOLKATA is None, "no time zone database")
+    def test_a_named_zone_is_used_as_is(self):
+        self.assertEqual(str(eh.resolve_tz("Asia/Kolkata")), "Asia/Kolkata")
+
+    @unittest.skipIf(KOLKATA is None, "no time zone database")
+    def test_without_a_name_the_machine_zone_keeps_daylight_saving(self):
+        with mock.patch.dict(os.environ, {"TZ": "Europe/London"}):
+            tz = eh.resolve_tz(None)
+        self.assertEqual(str(tz), "Europe/London")
+        july = eh.normalise(summary("2026-07-09T23:30:00Z", passed=1))  # 00:30 BST on 10 July
+        self.assertEqual(eh.local_day(july, tz), date(2026, 7, 10))
+
+    @unittest.skipIf(KOLKATA is None, "no time zone database")
+    def test_an_unknown_name_falls_back_to_the_machine_zone(self):
+        with mock.patch.dict(os.environ, {"TZ": "Asia/Kolkata"}), redirect_stderr(io.StringIO()) as err:
+            tz = eh.resolve_tz("Not/AZone")
+        self.assertEqual(str(tz), "Asia/Kolkata")
+        self.assertIn("Unknown time zone", err.getvalue())
+
+
 class OutputTest(unittest.TestCase):
 
     def setUp(self):
@@ -188,6 +226,13 @@ class OutputTest(unittest.TestCase):
             self.assertIn(f'id="panel{days}"', page)
         self.assertNotIn("<script>alert(1)</script>", page)
         self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", page)
+
+    def test_only_the_run_name_column_is_left_aligned(self):
+        page = eh.render_html(eh.load_runs(self.tmp.name), timezone.utc, datetime.now(timezone.utc).date(),
+                              datetime.now(timezone.utc), "History")
+        self.assertIn("td.name {", page)
+        self.assertNotIn("nth-child(2)", page)
+        self.assertEqual(page.count('<td class="name">'), 1)
 
     def test_only_https_run_links_are_rendered(self):
         write_run(self.tmp.name, summary("2026-11-01T00:00:00Z", passed=1, suite="Smoke",

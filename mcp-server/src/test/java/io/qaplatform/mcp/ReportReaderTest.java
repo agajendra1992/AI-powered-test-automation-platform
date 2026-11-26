@@ -57,4 +57,22 @@ public class ReportReaderTest {
         assertThat(reader.attachments(source, latest, "text/plain")).hasSize(1);
         executions.close();
     }
+
+    @Test
+    public void summaryLeavesOutThePerScenarioList() throws Exception {
+        Path project = TestSupport.fakeProject();
+        Files.createDirectories(project.resolve("target"));
+        Files.writeString(project.resolve("target/execution-summary.json"), """
+                {"suite":"Regression","total":2,"passed":1,"failed":1,"flakyScenarios":[],
+                 "scenarios":[{"id":"a.feature:3","name":"A","status":"passed","durationMs":5},
+                              {"id":"a.feature:9","name":"B","status":"failed","durationMs":7}]}
+                """);
+
+        McpConfig config = TestSupport.config(project, Map.of());
+        ExecutionService executions = new ExecutionService(config, r -> List.of("true"), new AuditLog(config.stateDir().resolve("a.log")));
+        Map<String, Object> summary = new ReportReader(project, executions).summary(new ReportReader(project, executions).resolve("workspace"));
+
+        assertThat(summary).containsEntry("total", 2).containsEntry("failed", 1).doesNotContainKey("scenarios");
+        executions.close();
+    }
 }
