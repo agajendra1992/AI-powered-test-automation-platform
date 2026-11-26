@@ -51,14 +51,27 @@ sut/.venv/bin/uvicorn app:app --app-dir sut --port 8000
 ```
 
 ```bash
-# 2. In another terminal: run the smoke suite (browsers download on first run)
-mvn clean test
+# 2. In another terminal: run the smoke suite (browsers download on first run). When it finishes,
+#    the Allure report and the execution history report open in your browser by themselves.
+scripts/run-tests.sh
 ```
 
-```bash
-# 3. Build the Allure report and the execution history report (target/execution-history/index.html)
-scripts/allure-report.sh
-```
+Plain `mvn clean test` works too; then build and open the reports with
+`scripts/allure-report.sh && scripts/open-reports.sh`.
+
+### Reports open automatically
+
+| After | Command | Opens |
+|---|---|---|
+| a local run | `scripts/run-tests.sh [mvn arguments]`, e.g. `-DsuiteXmlFile=testng-regression.xml -Dbrowser=firefox` | Allure report + execution history (last 1/3/7/10/30 days, weekly, monthly) |
+| a GitHub workflow you start | `scripts/run-workflow.sh regression.yml [-f browser=firefox -f shards=2 -f tags=@payment] [--ref branch]` | waits for the run, downloads its reports, opens them |
+| a workflow that already ran (e.g. last night's schedule) | `scripts/open-ci-report.sh [regression.yml \| cross-browser.yml \| ci.yml \| <run id>]` | the same, for the latest finished run or the given one |
+
+Both reports are served from a small local web server on `http://127.0.0.1:4040` (Allure does not work
+from `file://`) and open in the default browser; on macOS `QA_BROWSER_APP="Google Chrome"` picks another
+browser. `QA_NO_OPEN=1` builds without opening, and nothing opens in CI. Stop the server with
+`scripts/open-reports.sh --stop`. The scripts keep the test run's exit code, so a failed run still opens its
+report and still fails. `run-workflow.sh` and `open-ci-report.sh` need the GitHub CLI (`gh`) signed in.
 
 ## Running tests
 
@@ -219,7 +232,7 @@ config/checkstyle.xml           quality gate
 Dockerfile, docker-compose.yml  test-runner image; demo app + runner for local/CI parity
 .github/workflows/              ci, regression, cross-browser, docker, run-suite (reusable), report (reusable)
 sut/                            demo application under test (FastAPI) + its Dockerfile
-scripts/                        allure-report.sh, ci_summary.py, execution_history.py, check_versions.py
+scripts/                        run-tests.sh, run-workflow.sh, open-ci-report.sh, open-reports.sh, allure-report.sh, ci_summary.py, execution_history.py, check_versions.py
 mcp-server/                     MCP server + AI layer (separate Maven project; the framework never depends on it)
 rag/                            RAG service (Python FastAPI + ChromaDB), tests and retrieval gold set
 ai-orchestration/               optional LangChain + LangGraph workflow service (/ai/* API); calls MCP and RAG over HTTP
